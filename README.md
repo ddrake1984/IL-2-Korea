@@ -14,8 +14,14 @@ A self-contained, offline HTML tool for editing the `[KEY = graphics]` section o
 - Everything runs locally in your browser. Your `startup.cfg` is never uploaded anywhere.
 - Works entirely offline once the page is loaded.
 
+## Repository
+
+<https://github.com/ddrake1984/IL-2-Korea>
+
+Download `index.html` from there (or clone the repo) and open it locally — that's all the tool needs.
+
 ## Live version
 
-If GitHub Pages is enabled for this repository, the tool is also available directly at:
+If GitHub Pages is enabled for this repository, the tool is also served directly at:
 
-`https://<your-username>.github.io/IL-2_Korea_External_Graphics_Configurator/`
+<https://ddrake1984.github.io/IL-2-Korea/>
