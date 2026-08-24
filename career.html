@@ -1,0 +1,1710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IL-2 Korea — Career File Viewer</title>
+<style>
+:root{
+  --bg:#26221f;
+  --bg-panel:#2c2823;
+  --bg-toolbar:#1e1b18;
+  --bg-row-hover:rgba(255,255,255,.045);
+  --bg-popover:#1c1916;
+  --border:rgba(255,255,255,.09);
+  --row-bg:#332e27;
+  --row-bg-hover:#3f382d;
+  --text-bright:#efe8da;
+  --text:#c7bfae;
+  --text-dim:#8a8377;
+  --text-faint:#5f594e;
+  --amber:#d9a44b;
+  --amber-bright:#f0bd63;
+  --warn:#e2a23a;
+  --danger:#c85c4a;
+  --good:#7fae6d;
+  --accent:#c98b34;
+  font-size:16.5px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:"Bahnschrift","Segoe UI Semibold","Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+body{background:
+  radial-gradient(ellipse at 50% -10%, #34302a 0%, transparent 60%),
+  var(--bg);
+  min-height:100vh;
+  padding-bottom:80px;
+}
+h1,h2,h3{font-weight:700;margin:0;}
+button{font-family:inherit;cursor:pointer;}
+::selection{background:var(--amber);color:#221c12;}
+a{color:var(--amber);}
+
+/* ---------- Toolbar ---------- */
+.toolbar{
+  background:var(--bg-toolbar);
+  border-bottom:1px solid var(--border);
+  padding:10px 24px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  position:sticky;top:0;z-index:40;
+  box-shadow:0 4px 14px rgba(0,0,0,.35);
+}
+.app-brand{display:flex;align-items:center;gap:10px;margin-right:8px;}
+.app-brand .plane{font-size:20px;filter:saturate(0) brightness(1.6) sepia(1) hue-rotate(-10deg) saturate(3);}
+.app-brand-text{display:flex;flex-direction:column;line-height:1.1;}
+.app-brand-text b{color:var(--text-bright);font-size:14px;letter-spacing:.5px;}
+.app-brand-text span{color:var(--text-faint);font-size:11px;}
+.tb-sep{width:1px;align-self:stretch;background:var(--border);margin:0 4px;}
+.tb-btn{
+  background:#33302a;border:1px solid var(--border);color:var(--text-bright);
+  border-radius:4px;padding:6px 13px;font-size:13px;font-weight:600;letter-spacing:.3px;
+}
+.tb-btn:hover{background:#413c33;border-color:var(--amber);color:var(--amber-bright);}
+.tb-btn[disabled]{opacity:.4;pointer-events:none;}
+.tb-btn.primary{background:#5a4322;border-color:#8a611a;color:var(--amber-bright);}
+.tb-btn.primary:hover{background:#6b5029;}
+.tb-status{margin-left:auto;font-size:11.5px;color:var(--text-faint);text-align:right;line-height:1.45;max-width:430px;}
+.tb-status b{color:var(--text-dim);font-weight:600;}
+
+/* ---------- Layout ---------- */
+.wrap{max-width:1180px;margin:0 auto;padding:24px 24px 0;}
+.page-title{display:flex;align-items:baseline;gap:10px;margin-bottom:18px;flex-wrap:wrap;}
+.page-title h1{font-size:26px;letter-spacing:2px;color:var(--text-bright);text-transform:uppercase;}
+.page-title .sub{margin-left:6px;font-size:13px;color:var(--text-faint);font-weight:400;}
+
+.empty-state{
+  border:1px dashed var(--border);border-radius:8px;padding:40px 32px;text-align:center;
+  color:var(--text-dim);margin-bottom:24px;background:rgba(0,0,0,.15);
+}
+.empty-state h2{color:var(--text-bright);font-size:18px;margin-bottom:10px;letter-spacing:.3px;}
+.empty-state p{font-size:14px;line-height:1.6;max-width:600px;margin:0 auto 14px;}
+.path-hints{display:flex;flex-direction:column;gap:6px;margin:14px auto 18px;max-width:660px;text-align:left;}
+.path-hint{
+  background:#1f1c18;border:1px solid var(--border);border-radius:4px;padding:7px 11px;font-size:11.5px;
+  color:var(--text);font-family:Consolas,Menlo,monospace;display:flex;align-items:center;justify-content:space-between;gap:8px;
+}
+.path-hint span{overflow-wrap:anywhere;}
+.path-hint button{background:none;border:none;color:var(--amber);font-size:11px;font-weight:700;flex-shrink:0;}
+.path-hint button:hover{color:var(--amber-bright);}
+
+/* ---------- Tabs ---------- */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:20px;flex-wrap:wrap;}
+.tab{
+  background:none;border:none;border-bottom:2px solid transparent;color:var(--text-dim);
+  padding:9px 15px;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;
+}
+.tab:hover{color:var(--text-bright);background:var(--bg-row-hover);}
+.tab.active{color:var(--amber-bright);border-bottom-color:var(--amber);}
+.tab .cnt{color:var(--text-faint);font-weight:400;margin-left:5px;font-size:11.5px;}
+.panel{display:none;}
+.panel.active{display:block;}
+
+/* ---------- Panels / cards ---------- */
+.card{background:var(--bg-panel);border:1px solid var(--border);border-radius:6px;padding:16px 18px;margin-bottom:18px;}
+.card h3{
+  font-size:13px;text-transform:uppercase;letter-spacing:2px;color:var(--text-bright);
+  padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:12px;
+}
+.card h3 .note{float:right;font-size:10.5px;letter-spacing:.4px;color:var(--text-faint);text-transform:none;font-weight:400;}
+
+.hero{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap;}
+.hero-main{flex:1 1 320px;min-width:0;}
+.hero-name{font-size:30px;color:var(--text-bright);letter-spacing:1px;line-height:1.1;}
+.hero-sub{font-size:14px;color:var(--text-dim);margin-top:5px;}
+.hero-sub .sep{color:var(--text-faint);margin:0 7px;}
+
+/* stat tiles */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:9px;margin-top:4px;}
+.stat{background:#1f1c18;border:1px solid var(--border);border-radius:5px;padding:9px 11px;}
+.stat .v{font-size:21px;color:var(--text-bright);font-weight:700;line-height:1.15;}
+.stat .v.amber{color:var(--amber-bright);}
+.stat .v.good{color:var(--good);}
+.stat .v.danger{color:var(--danger);}
+.stat .k{font-size:10.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.9px;margin-top:3px;}
+
+/* ---------- Tables ---------- */
+.tbl-scroll{overflow-x:auto;}
+table.dt{width:100%;border-collapse:collapse;font-size:13px;}
+table.dt th{
+  text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:1px;color:var(--text-faint);
+  font-weight:600;padding:6px 9px;border-bottom:1px solid var(--border);white-space:nowrap;
+}
+table.dt th.sortable{cursor:pointer;user-select:none;}
+table.dt th.sortable:hover{color:var(--amber);}
+table.dt th .arrow{color:var(--amber);margin-left:3px;}
+table.dt td{padding:6px 9px;border-bottom:1px solid rgba(255,255,255,.045);vertical-align:top;}
+table.dt tbody tr:hover{background:var(--bg-row-hover);}
+table.dt tbody tr.is-player{background:rgba(217,164,75,.09);}
+table.dt tbody tr.is-player:hover{background:rgba(217,164,75,.14);}
+table.dt tbody tr.dimmed td{opacity:.5;}
+table.dt td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+table.dt td.mono,table.dt td .mono{font-family:Consolas,Menlo,monospace;font-size:11.5px;}
+table.dt td.bright{color:var(--text-bright);}
+.tbl-empty{color:var(--text-faint);font-size:13px;padding:18px 4px;text-align:center;}
+
+/* badges */
+.badge{
+  display:inline-block;padding:1px 7px;border-radius:3px;font-size:10.5px;font-weight:700;
+  letter-spacing:.6px;text-transform:uppercase;border:1px solid;white-space:nowrap;
+}
+.badge.ok{color:var(--good);border-color:rgba(127,174,109,.4);background:rgba(127,174,109,.1);}
+.badge.warn{color:var(--warn);border-color:rgba(226,162,58,.4);background:rgba(226,162,58,.1);}
+.badge.bad{color:var(--danger);border-color:rgba(200,92,74,.4);background:rgba(200,92,74,.1);}
+.badge.neutral{color:var(--text-dim);border-color:var(--border);background:rgba(255,255,255,.03);}
+.badge.player{color:var(--amber-bright);border-color:rgba(240,189,99,.45);background:rgba(240,189,99,.12);}
+.badge.tiny{font-size:9.5px;padding:0 5px;}
+
+/* unverified marker */
+.unv{border-bottom:1px dotted var(--text-faint);cursor:help;}
+.unv::after{content:"?";font-size:9px;color:var(--text-faint);vertical-align:super;margin-left:1px;}
+
+/* health bar */
+.hp{display:flex;align-items:center;gap:6px;min-width:74px;}
+.hp .track{flex:1;height:5px;border-radius:3px;background:#463f34;overflow:hidden;min-width:34px;}
+.hp .fill{height:100%;border-radius:3px;background:var(--good);}
+.hp .fill.warn{background:var(--warn);}
+.hp .fill.bad{background:var(--danger);}
+.hp .pct{font-size:11px;color:var(--text-dim);font-variant-numeric:tabular-nums;min-width:26px;text-align:right;}
+
+/* kill board */
+.killgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:9px;}
+.killrow{background:#1f1c18;border:1px solid var(--border);border-radius:5px;padding:8px 11px;}
+.killrow .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+.killrow .nm{font-size:12.5px;color:var(--text);}
+.killrow .ct{font-size:17px;color:var(--amber-bright);font-weight:700;font-variant-numeric:tabular-nums;}
+.killrow .bar{height:4px;border-radius:2px;background:#463f34;margin-top:6px;overflow:hidden;}
+.killrow .bar i{display:block;height:100%;background:var(--accent);border-radius:2px;}
+
+/* timeline */
+.tl{position:relative;padding-left:20px;}
+.tl::before{content:"";position:absolute;left:5px;top:4px;bottom:4px;width:1px;background:var(--border);}
+.tl-date{
+  font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:1.1px;
+  margin:14px 0 6px;font-weight:700;position:relative;
+}
+.tl-date::before{
+  content:"";position:absolute;left:-18px;top:4px;width:7px;height:7px;border-radius:50%;
+  background:var(--bg);border:1px solid var(--text-faint);
+}
+.tl-ev{display:flex;gap:9px;align-items:baseline;padding:3px 0;font-size:13px;line-height:1.45;}
+.tl-ev .ico{width:15px;flex-shrink:0;text-align:center;font-size:11px;color:var(--text-faint);}
+.tl-ev .txt{min-width:0;color:var(--text);}
+.tl-ev .txt b{color:var(--text-bright);font-weight:600;}
+.tl-ev .tm{margin-left:auto;font-size:10.5px;color:var(--text-faint);flex-shrink:0;font-variant-numeric:tabular-nums;}
+.tl-ev.kill .ico{color:var(--good);}
+.tl-ev.loss .ico{color:var(--danger);}
+.tl-ev.award .ico{color:var(--amber);}
+.tl-ev.news .ico{color:var(--accent);}
+.tl-ev.news .txt{color:var(--text-dim);font-style:italic;}
+
+/* mission detail */
+.mdet{background:#1f1c18;border-left:2px solid var(--accent);padding:11px 14px;margin:2px 0 8px;border-radius:0 4px 4px 0;}
+.mdet .brief{font-size:12.5px;line-height:1.6;color:var(--text);}
+.mdet .brief h1{font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:var(--amber);margin:0 0 3px;}
+.expander{background:none;border:none;color:var(--amber);font-size:11px;font-weight:700;padding:0;}
+.expander:hover{color:var(--amber-bright);}
+
+/* filter bar */
+.filterbar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;}
+.filterbar input[type=search],.filterbar select{
+  background:#1f1c18;border:1px solid var(--border);color:var(--text-bright);border-radius:4px;
+  height:28px;padding:0 9px;font-size:13px;font-family:inherit;
+}
+.filterbar input[type=search]{min-width:210px;}
+.filterbar input:focus,.filterbar select:focus{outline:none;border-color:var(--amber);}
+.filterbar .lbl{font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:1px;}
+.filterbar .spacer{margin-left:auto;}
+.chip{
+  background:#33302a;border:1px solid var(--border);color:var(--text-dim);border-radius:12px;
+  padding:3px 11px;font-size:11.5px;font-weight:600;
+}
+.chip.on{background:#5a4322;border-color:#8a611a;color:var(--amber-bright);}
+
+/* supply meters */
+.meters{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:11px;}
+.meter .top{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;}
+.meter .top .n{color:var(--text-dim);}
+.meter .top .v{color:var(--text-bright);font-weight:700;font-variant-numeric:tabular-nums;}
+.meter .track{height:6px;border-radius:3px;background:#463f34;margin-top:5px;overflow:hidden;}
+.meter .track i{display:block;height:100%;background:var(--accent);border-radius:3px;}
+
+/* raw table browser */
+.rawnav{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;}
+.rawnav button{
+  background:#33302a;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;
+  padding:4px 10px;font-size:11.5px;font-family:Consolas,Menlo,monospace;
+}
+.rawnav button:hover{border-color:var(--amber);color:var(--amber-bright);}
+.rawnav button.on{background:#5a4322;border-color:#8a611a;color:var(--amber-bright);}
+.rawnav button .n{color:var(--text-faint);margin-left:4px;}
+table.raw{font-family:Consolas,Menlo,monospace;font-size:11.5px;}
+table.raw td{max-width:340px;overflow-wrap:anywhere;}
+
+/* toast */
+.toast{
+  position:fixed;bottom:22px;left:50%;transform:translateX(-50%);
+  background:#1c1916;border:1px solid var(--border);border-left:3px solid var(--good);
+  color:var(--text-bright);padding:10px 18px;border-radius:5px;font-size:13px;
+  box-shadow:0 10px 30px rgba(0,0,0,.55);z-index:100;max-width:560px;
+}
+.toast.err{border-left-color:var(--danger);}
+
+.footnote{font-size:11.5px;color:var(--text-faint);line-height:1.6;margin-top:2px;}
+.footnote code{font-family:Consolas,Menlo,monospace;color:var(--text-dim);}
+.spinner{
+  display:inline-block;width:12px;height:12px;border:2px solid var(--text-faint);
+  border-top-color:var(--amber);border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="app-brand">
+    <span class="plane">✈</span>
+    <div class="app-brand-text">
+      <b>CAREER FILE VIEWER</b>
+      <span>IL-2 Korea — Pilot Career Records</span>
+    </div>
+  </div>
+  <div class="tb-sep"></div>
+  <button class="tb-btn primary" id="btnOpen">Open career .db…</button>
+  <button class="tb-btn" id="btnReload" disabled>Reload</button>
+  <button class="tb-btn" id="btnClose" disabled>Close</button>
+  <div class="tb-status" id="tbStatus">Starting SQLite engine <span class="spinner"></span></div>
+</div>
+
+<div class="wrap">
+
+  <!-- ---------------- Empty state ---------------- -->
+  <div id="emptyState">
+    <div class="page-title">
+      <h1>Career Viewer</h1>
+      <span class="sub">read-only</span>
+    </div>
+    <div class="empty-state">
+      <h2>Open an IL-2 Korea career file</h2>
+      <p>
+        Career files are SQLite databases, one per pilot, stored in your
+        installation's <code>data\Career</code> folder. Nothing is uploaded —
+        the file is read entirely inside your browser.
+      </p>
+      <div class="path-hints" id="pathHints"></div>
+      <button class="tb-btn primary" id="btnEmptyOpen">Choose a .db file…</button>
+      <p class="footnote" style="margin-top:16px;">
+        This viewer never writes to your career file. Editing is a separate,
+        later step — and the game must be closed before any tool writes to it.
+      </p>
+    </div>
+  </div>
+
+  <!-- ---------------- Loaded career ---------------- -->
+  <div id="careerView" style="display:none;">
+    <div class="tabs" id="tabs"></div>
+    <div class="panel" id="panel-overview"></div>
+    <div class="panel" id="panel-roster"></div>
+    <div class="panel" id="panel-kills"></div>
+    <div class="panel" id="panel-missions"></div>
+    <div class="panel" id="panel-timeline"></div>
+    <div class="panel" id="panel-squadron"></div>
+    <div class="panel" id="panel-raw"></div>
+  </div>
+
+</div>
+
+<!-- ===================================================================
+     sql.js 1.11.0 (SQLite 3.45 compiled to WebAssembly) - MIT licence
+     https://github.com/sql-js/sql.js  -- vendor code, do not hand-edit.
+     Loads sql-wasm.wasm from this same folder.
+     =================================================================== -->
+<script id="sqljs-runtime">
+
+// We are modularizing this manually because the current modularize setting in Emscripten has some issues:
+// https://github.com/kripken/emscripten/issues/5820
+// In addition, When you use emcc's modularization, it still expects to export a global object called `Module`,
+// which is able to be used/called before the WASM is loaded.
+// The modularization below exports a promise that loads and resolves to the actual sql.js module.
+// That way, this module can't be used before the WASM is finished loading.
+
+// We are going to define a function that a user will call to start loading initializing our Sql.js library
+// However, that function might be called multiple times, and on subsequent calls, we don't actually want it to instantiate a new instance of the Module
+// Instead, we want to return the previously loaded module
+
+// TODO: Make this not declare a global if used in the browser
+var initSqlJsPromise = undefined;
+
+var initSqlJs = function (moduleConfig) {
+
+    if (initSqlJsPromise){
+      return initSqlJsPromise;
+    }
+    // If we're here, we've never called this function before
+    initSqlJsPromise = new Promise(function (resolveModule, reject) {
+
+        // We are modularizing this manually because the current modularize setting in Emscripten has some issues:
+        // https://github.com/kripken/emscripten/issues/5820
+
+        // The way to affect the loading of emcc compiled modules is to create a variable called `Module` and add
+        // properties to it, like `preRun`, `postRun`, etc
+        // We are using that to get notified when the WASM has finished loading.
+        // Only then will we return our promise
+
+        // If they passed in a moduleConfig object, use that
+        // Otherwise, initialize Module to the empty object
+        var Module = typeof moduleConfig !== 'undefined' ? moduleConfig : {};
+
+        // EMCC only allows for a single onAbort function (not an array of functions)
+        // So if the user defined their own onAbort function, we remember it and call it
+        var originalOnAbortFunction = Module['onAbort'];
+        Module['onAbort'] = function (errorThatCausedAbort) {
+            reject(new Error(errorThatCausedAbort));
+            if (originalOnAbortFunction){
+              originalOnAbortFunction(errorThatCausedAbort);
+            }
+        };
+
+        Module['postRun'] = Module['postRun'] || [];
+        Module['postRun'].push(function () {
+            // When Emscripted calls postRun, this promise resolves with the built Module
+            resolveModule(Module);
+        });
+
+        // There is a section of code in the emcc-generated code below that looks like this:
+        // (Note that this is lowercase `module`)
+        // if (typeof module !== 'undefined') {
+        //     module['exports'] = Module;
+        // }
+        // When that runs, it's going to overwrite our own modularization export efforts in shell-post.js!
+        // The only way to tell emcc not to emit it is to pass the MODULARIZE=1 or MODULARIZE_INSTANCE=1 flags,
+        // but that carries with it additional unnecessary baggage/bugs we don't want either.
+        // So, we have three options:
+        // 1) We undefine `module`
+        // 2) We remember what `module['exports']` was at the beginning of this function and we restore it later
+        // 3) We write a script to remove those lines of code as part of the Make process.
+        //
+        // Since those are the only lines of code that care about module, we will undefine it. It's the most straightforward
+        // of the options, and has the side effect of reducing emcc's efforts to modify the module if its output were to change in the future.
+        // That's a nice side effect since we're handling the modularization efforts ourselves
+        module = undefined;
+
+        // The emcc-generated code and shell-post.js code goes below,
+        // meaning that all of it runs inside of this promise. If anything throws an exception, our promise will abort
+var f;f||=typeof Module != 'undefined' ? Module : {};var aa="object"==typeof window,ba="function"==typeof importScripts,ca="object"==typeof process&&"object"==typeof process.versions&&"string"==typeof process.versions.node;"use strict";
+f.onRuntimeInitialized=function(){function a(g,l){switch(typeof l){case "boolean":fc(g,l?1:0);break;case "number":gc(g,l);break;case "string":hc(g,l,-1,-1);break;case "object":if(null===l)ib(g);else if(null!=l.length){var n=da(l,ea);ic(g,n,l.length,-1);fa(n)}else xa(g,"Wrong API use : tried to return a value of an unknown type ("+l+").",-1);break;default:ib(g)}}function b(g,l){for(var n=[],t=0;t<g;t+=1){var w=m(l+4*t,"i32"),A=jc(w);if(1===A||2===A)w=kc(w);else if(3===A)w=lc(w);else if(4===A){A=w;
+w=mc(A);A=nc(A);for(var N=new Uint8Array(w),M=0;M<w;M+=1)N[M]=p[A+M];w=N}else w=null;n.push(w)}return n}function c(g,l){this.Ka=g;this.db=l;this.Ia=1;this.eb=[]}function d(g,l){this.db=l;l=ha(g)+1;this.Xa=ia(l);if(null===this.Xa)throw Error("Unable to allocate memory for the SQL string");q(g,u,this.Xa,l);this.cb=this.Xa;this.Ta=this.hb=null}function e(g){this.filename="dbfile_"+(4294967295*Math.random()>>>0);if(null!=g){var l=this.filename,n="/",t=l;n&&(n="string"==typeof n?n:ja(n),t=l?x(n+"/"+l):
+n);l=ka(!0,!0);t=la(t,(void 0!==l?l:438)&4095|32768,0);if(g){if("string"==typeof g){n=Array(g.length);for(var w=0,A=g.length;w<A;++w)n[w]=g.charCodeAt(w);g=n}ma(t,l|146);n=na(t,577);oa(n,g,0,g.length,0);pa(n);ma(t,l)}}this.handleError(r(this.filename,h));this.db=m(h,"i32");lb(this.db);this.Ya={};this.Ma={}}var h=y(4),k=f.cwrap,r=k("sqlite3_open","number",["string","number"]),z=k("sqlite3_close_v2","number",["number"]),v=k("sqlite3_exec","number",["number","string","number","number","number"]),E=k("sqlite3_changes",
+"number",["number"]),H=k("sqlite3_prepare_v2","number",["number","string","number","number","number"]),mb=k("sqlite3_sql","string",["number"]),oc=k("sqlite3_normalized_sql","string",["number"]),nb=k("sqlite3_prepare_v2","number",["number","number","number","number","number"]),pc=k("sqlite3_bind_text","number",["number","number","number","number","number"]),ob=k("sqlite3_bind_blob","number",["number","number","number","number","number"]),qc=k("sqlite3_bind_double","number",["number","number","number"]),
+rc=k("sqlite3_bind_int","number",["number","number","number"]),sc=k("sqlite3_bind_parameter_index","number",["number","string"]),tc=k("sqlite3_step","number",["number"]),uc=k("sqlite3_errmsg","string",["number"]),vc=k("sqlite3_column_count","number",["number"]),wc=k("sqlite3_data_count","number",["number"]),xc=k("sqlite3_column_double","number",["number","number"]),pb=k("sqlite3_column_text","string",["number","number"]),yc=k("sqlite3_column_blob","number",["number","number"]),zc=k("sqlite3_column_bytes",
+"number",["number","number"]),Ac=k("sqlite3_column_type","number",["number","number"]),Bc=k("sqlite3_column_name","string",["number","number"]),Cc=k("sqlite3_reset","number",["number"]),Dc=k("sqlite3_clear_bindings","number",["number"]),Ec=k("sqlite3_finalize","number",["number"]),qb=k("sqlite3_create_function_v2","number","number string number number number number number number number".split(" ")),jc=k("sqlite3_value_type","number",["number"]),mc=k("sqlite3_value_bytes","number",["number"]),lc=k("sqlite3_value_text",
+"string",["number"]),nc=k("sqlite3_value_blob","number",["number"]),kc=k("sqlite3_value_double","number",["number"]),gc=k("sqlite3_result_double","",["number","number"]),ib=k("sqlite3_result_null","",["number"]),hc=k("sqlite3_result_text","",["number","string","number","number"]),ic=k("sqlite3_result_blob","",["number","number","number","number"]),fc=k("sqlite3_result_int","",["number","number"]),xa=k("sqlite3_result_error","",["number","string","number"]),rb=k("sqlite3_aggregate_context","number",
+["number","number"]),lb=k("RegisterExtensionFunctions","number",["number"]);c.prototype.bind=function(g){if(!this.Ka)throw"Statement closed";this.reset();return Array.isArray(g)?this.vb(g):null!=g&&"object"===typeof g?this.wb(g):!0};c.prototype.step=function(){if(!this.Ka)throw"Statement closed";this.Ia=1;var g=tc(this.Ka);switch(g){case 100:return!0;case 101:return!1;default:throw this.db.handleError(g);}};c.prototype.qb=function(g){null==g&&(g=this.Ia,this.Ia+=1);return xc(this.Ka,g)};c.prototype.zb=
+function(g){null==g&&(g=this.Ia,this.Ia+=1);g=pb(this.Ka,g);if("function"!==typeof BigInt)throw Error("BigInt is not supported");return BigInt(g)};c.prototype.Ab=function(g){null==g&&(g=this.Ia,this.Ia+=1);return pb(this.Ka,g)};c.prototype.getBlob=function(g){null==g&&(g=this.Ia,this.Ia+=1);var l=zc(this.Ka,g);g=yc(this.Ka,g);for(var n=new Uint8Array(l),t=0;t<l;t+=1)n[t]=p[g+t];return n};c.prototype.get=function(g,l){l=l||{};null!=g&&this.bind(g)&&this.step();g=[];for(var n=wc(this.Ka),t=0;t<n;t+=
+1)switch(Ac(this.Ka,t)){case 1:var w=l.useBigInt?this.zb(t):this.qb(t);g.push(w);break;case 2:g.push(this.qb(t));break;case 3:g.push(this.Ab(t));break;case 4:g.push(this.getBlob(t));break;default:g.push(null)}return g};c.prototype.getColumnNames=function(){for(var g=[],l=vc(this.Ka),n=0;n<l;n+=1)g.push(Bc(this.Ka,n));return g};c.prototype.getAsObject=function(g,l){g=this.get(g,l);l=this.getColumnNames();for(var n={},t=0;t<l.length;t+=1)n[l[t]]=g[t];return n};c.prototype.getSQL=function(){return mb(this.Ka)};
+c.prototype.getNormalizedSQL=function(){return oc(this.Ka)};c.prototype.run=function(g){null!=g&&this.bind(g);this.step();return this.reset()};c.prototype.mb=function(g,l){null==l&&(l=this.Ia,this.Ia+=1);g=qa(g);var n=da(g,ea);this.eb.push(n);this.db.handleError(pc(this.Ka,l,n,g.length-1,0))};c.prototype.ub=function(g,l){null==l&&(l=this.Ia,this.Ia+=1);var n=da(g,ea);this.eb.push(n);this.db.handleError(ob(this.Ka,l,n,g.length,0))};c.prototype.lb=function(g,l){null==l&&(l=this.Ia,this.Ia+=1);this.db.handleError((g===
+(g|0)?rc:qc)(this.Ka,l,g))};c.prototype.xb=function(g){null==g&&(g=this.Ia,this.Ia+=1);ob(this.Ka,g,0,0,0)};c.prototype.nb=function(g,l){null==l&&(l=this.Ia,this.Ia+=1);switch(typeof g){case "string":this.mb(g,l);return;case "number":this.lb(g,l);return;case "bigint":this.mb(g.toString(),l);return;case "boolean":this.lb(g+0,l);return;case "object":if(null===g){this.xb(l);return}if(null!=g.length){this.ub(g,l);return}}throw"Wrong API use : tried to bind a value of an unknown type ("+g+").";};c.prototype.wb=
+function(g){var l=this;Object.keys(g).forEach(function(n){var t=sc(l.Ka,n);0!==t&&l.nb(g[n],t)});return!0};c.prototype.vb=function(g){for(var l=0;l<g.length;l+=1)this.nb(g[l],l+1);return!0};c.prototype.reset=function(){this.freemem();return 0===Dc(this.Ka)&&0===Cc(this.Ka)};c.prototype.freemem=function(){for(var g;void 0!==(g=this.eb.pop());)fa(g)};c.prototype.free=function(){this.freemem();var g=0===Ec(this.Ka);delete this.db.Ya[this.Ka];this.Ka=0;return g};d.prototype.next=function(){if(null===
+this.Xa)return{done:!0};null!==this.Ta&&(this.Ta.free(),this.Ta=null);if(!this.db.db)throw this.fb(),Error("Database closed");var g=ra(),l=y(4);sa(h);sa(l);try{this.db.handleError(nb(this.db.db,this.cb,-1,h,l));this.cb=m(l,"i32");var n=m(h,"i32");if(0===n)return this.fb(),{done:!0};this.Ta=new c(n,this.db);this.db.Ya[n]=this.Ta;return{value:this.Ta,done:!1}}catch(t){throw this.hb=ta(this.cb),this.fb(),t;}finally{ua(g)}};d.prototype.fb=function(){fa(this.Xa);this.Xa=null};d.prototype.getRemainingSQL=
+function(){return null!==this.hb?this.hb:ta(this.cb)};"function"===typeof Symbol&&"symbol"===typeof Symbol.iterator&&(d.prototype[Symbol.iterator]=function(){return this});e.prototype.run=function(g,l){if(!this.db)throw"Database closed";if(l){g=this.prepare(g,l);try{g.step()}finally{g.free()}}else this.handleError(v(this.db,g,0,0,h));return this};e.prototype.exec=function(g,l,n){if(!this.db)throw"Database closed";var t=ra(),w=null;try{var A=va(g),N=y(4);for(g=[];0!==m(A,"i8");){sa(h);sa(N);this.handleError(nb(this.db,
+A,-1,h,N));var M=m(h,"i32");A=m(N,"i32");if(0!==M){var K=null;w=new c(M,this);for(null!=l&&w.bind(l);w.step();)null===K&&(K={columns:w.getColumnNames(),values:[]},g.push(K)),K.values.push(w.get(null,n));w.free()}}return g}catch(O){throw w&&w.free(),O;}finally{ua(t)}};e.prototype.each=function(g,l,n,t,w){"function"===typeof l&&(t=n,n=l,l=void 0);g=this.prepare(g,l);try{for(;g.step();)n(g.getAsObject(null,w))}finally{g.free()}if("function"===typeof t)return t()};e.prototype.prepare=function(g,l){sa(h);
+this.handleError(H(this.db,g,-1,h,0));g=m(h,"i32");if(0===g)throw"Nothing to prepare";var n=new c(g,this);null!=l&&n.bind(l);return this.Ya[g]=n};e.prototype.iterateStatements=function(g){return new d(g,this)};e.prototype["export"]=function(){Object.values(this.Ya).forEach(function(l){l.free()});Object.values(this.Ma).forEach(wa);this.Ma={};this.handleError(z(this.db));var g=ya(this.filename);this.handleError(r(this.filename,h));this.db=m(h,"i32");lb(this.db);return g};e.prototype.close=function(){null!==
+this.db&&(Object.values(this.Ya).forEach(function(g){g.free()}),Object.values(this.Ma).forEach(wa),this.Ma={},this.handleError(z(this.db)),za("/"+this.filename),this.db=null)};e.prototype.handleError=function(g){if(0===g)return null;g=uc(this.db);throw Error(g);};e.prototype.getRowsModified=function(){return E(this.db)};e.prototype.create_function=function(g,l){Object.prototype.hasOwnProperty.call(this.Ma,g)&&(wa(this.Ma[g]),delete this.Ma[g]);var n=Aa(function(t,w,A){w=b(w,A);try{var N=l.apply(null,
+w)}catch(M){xa(t,M,-1);return}a(t,N)},"viii");this.Ma[g]=n;this.handleError(qb(this.db,g,l.length,1,0,n,0,0,0));return this};e.prototype.create_aggregate=function(g,l){var n=l.init||function(){return null},t=l.finalize||function(K){return K},w=l.step;if(!w)throw"An aggregate function must have a step function in "+g;var A={};Object.hasOwnProperty.call(this.Ma,g)&&(wa(this.Ma[g]),delete this.Ma[g]);l=g+"__finalize";Object.hasOwnProperty.call(this.Ma,l)&&(wa(this.Ma[l]),delete this.Ma[l]);var N=Aa(function(K,
+O,Ra){var Y=rb(K,1);Object.hasOwnProperty.call(A,Y)||(A[Y]=n());O=b(O,Ra);O=[A[Y]].concat(O);try{A[Y]=w.apply(null,O)}catch(Gc){delete A[Y],xa(K,Gc,-1)}},"viii"),M=Aa(function(K){var O=rb(K,1);try{var Ra=t(A[O])}catch(Y){delete A[O];xa(K,Y,-1);return}a(K,Ra);delete A[O]},"vi");this.Ma[g]=N;this.Ma[l]=M;this.handleError(qb(this.db,g,w.length-1,1,0,0,N,M,0));return this};f.Database=e};var Ba=Object.assign({},f),Ca="./this.program",B="",Da,Ea;
+if(ca){var fs=require("fs"),Fa=require("path");B=__dirname+"/";Ea=a=>{a=Ga(a)?new URL(a):Fa.normalize(a);return fs.readFileSync(a)};Da=a=>{a=Ga(a)?new URL(a):Fa.normalize(a);return new Promise((b,c)=>{fs.readFile(a,void 0,(d,e)=>{d?c(d):b(e.buffer)})})};!f.thisProgram&&1<process.argv.length&&(Ca=process.argv[1].replace(/\\/g,"/"));process.argv.slice(2);"undefined"!=typeof module&&(module.exports=f)}else if(aa||ba)ba?B=self.location.href:"undefined"!=typeof document&&document.currentScript&&(B=document.currentScript.src),
+B=B.startsWith("blob:")?"":B.substr(0,B.replace(/[?#].*/,"").lastIndexOf("/")+1),ba&&(Ea=a=>{var b=new XMLHttpRequest;b.open("GET",a,!1);b.responseType="arraybuffer";b.send(null);return new Uint8Array(b.response)}),Da=a=>Ga(a)?new Promise((b,c)=>{var d=new XMLHttpRequest;d.open("GET",a,!0);d.responseType="arraybuffer";d.onload=()=>{(200==d.status||0==d.status&&d.response)&&c(d.response);b(d.status)};d.onerror=b;d.send(null)}):fetch(a,{credentials:"same-origin"}).then(b=>b.ok?b.arrayBuffer():Promise.reject(Error(b.status+
+" : "+b.url)));var Ha=f.print||console.log.bind(console),C=f.printErr||console.error.bind(console);Object.assign(f,Ba);Ba=null;f.thisProgram&&(Ca=f.thisProgram);var Ia;f.wasmBinary&&(Ia=f.wasmBinary);var Ja,Ka=!1,p,u,La,D,F,Ma,Na;
+function Oa(){var a=Ja.buffer;f.HEAP8=p=new Int8Array(a);f.HEAP16=La=new Int16Array(a);f.HEAPU8=u=new Uint8Array(a);f.HEAPU16=new Uint16Array(a);f.HEAP32=D=new Int32Array(a);f.HEAPU32=F=new Uint32Array(a);f.HEAPF32=Ma=new Float32Array(a);f.HEAPF64=Na=new Float64Array(a)}var Pa=[],Qa=[],Sa=[];function Ta(){var a=f.preRun.shift();Pa.unshift(a)}var Ua=0,Va=null,Wa=null;
+function G(a){f.onAbort?.(a);a="Aborted("+a+")";C(a);Ka=!0;throw new WebAssembly.RuntimeError(a+". Build with -sASSERTIONS for more info.");}var Xa=a=>a.startsWith("data:application/octet-stream;base64,"),Ga=a=>a.startsWith("file://"),Ya;function Za(a){if(a==Ya&&Ia)return new Uint8Array(Ia);if(Ea)return Ea(a);throw"both async and sync fetching of the wasm failed";}function $a(a){return Ia?Promise.resolve().then(()=>Za(a)):Da(a).then(b=>new Uint8Array(b),()=>Za(a))}
+function ab(a,b,c){return $a(a).then(d=>WebAssembly.instantiate(d,b)).then(c,d=>{C(`failed to asynchronously prepare wasm: ${d}`);G(d)})}function bb(a,b){var c=Ya;Ia||"function"!=typeof WebAssembly.instantiateStreaming||Xa(c)||Ga(c)||ca||"function"!=typeof fetch?ab(c,a,b):fetch(c,{credentials:"same-origin"}).then(d=>WebAssembly.instantiateStreaming(d,a).then(b,function(e){C(`wasm streaming compile failed: ${e}`);C("falling back to ArrayBuffer instantiation");return ab(c,a,b)}))}
+var I,J,cb=a=>{for(;0<a.length;)a.shift()(f)};function m(a,b="i8"){b.endsWith("*")&&(b="*");switch(b){case "i1":return p[a];case "i8":return p[a];case "i16":return La[a>>1];case "i32":return D[a>>2];case "i64":G("to do getValue(i64) use WASM_BIGINT");case "float":return Ma[a>>2];case "double":return Na[a>>3];case "*":return F[a>>2];default:G(`invalid type for getValue: ${b}`)}}
+function sa(a){var b="i32";b.endsWith("*")&&(b="*");switch(b){case "i1":p[a]=0;break;case "i8":p[a]=0;break;case "i16":La[a>>1]=0;break;case "i32":D[a>>2]=0;break;case "i64":G("to do setValue(i64) use WASM_BIGINT");case "float":Ma[a>>2]=0;break;case "double":Na[a>>3]=0;break;case "*":F[a>>2]=0;break;default:G(`invalid type for setValue: ${b}`)}}
+var db="undefined"!=typeof TextDecoder?new TextDecoder:void 0,L=(a,b,c)=>{var d=b+c;for(c=b;a[c]&&!(c>=d);)++c;if(16<c-b&&a.buffer&&db)return db.decode(a.subarray(b,c));for(d="";b<c;){var e=a[b++];if(e&128){var h=a[b++]&63;if(192==(e&224))d+=String.fromCharCode((e&31)<<6|h);else{var k=a[b++]&63;e=224==(e&240)?(e&15)<<12|h<<6|k:(e&7)<<18|h<<12|k<<6|a[b++]&63;65536>e?d+=String.fromCharCode(e):(e-=65536,d+=String.fromCharCode(55296|e>>10,56320|e&1023))}}else d+=String.fromCharCode(e)}return d},ta=(a,
+b)=>a?L(u,a,b):"",eb=(a,b)=>{for(var c=0,d=a.length-1;0<=d;d--){var e=a[d];"."===e?a.splice(d,1):".."===e?(a.splice(d,1),c++):c&&(a.splice(d,1),c--)}if(b)for(;c;c--)a.unshift("..");return a},x=a=>{var b="/"===a.charAt(0),c="/"===a.substr(-1);(a=eb(a.split("/").filter(d=>!!d),!b).join("/"))||b||(a=".");a&&c&&(a+="/");return(b?"/":"")+a},fb=a=>{var b=/^(\/?|)([\s\S]*?)((?:\.{1,2}|[^\/]+?|)(\.[^.\/]*|))(?:[\/]*)$/.exec(a).slice(1);a=b[0];b=b[1];if(!a&&!b)return".";b&&=b.substr(0,b.length-1);return a+
+b},gb=a=>{if("/"===a)return"/";a=x(a);a=a.replace(/\/$/,"");var b=a.lastIndexOf("/");return-1===b?a:a.substr(b+1)},hb=()=>{if("object"==typeof crypto&&"function"==typeof crypto.getRandomValues)return c=>crypto.getRandomValues(c);if(ca)try{var a=require("crypto");if(a.randomFillSync)return c=>a.randomFillSync(c);var b=a.randomBytes;return c=>(c.set(b(c.byteLength)),c)}catch(c){}G("initRandomDevice")},jb=a=>(jb=hb())(a),kb=(...a)=>{for(var b="",c=!1,d=a.length-1;-1<=d&&!c;d--){c=0<=d?a[d]:"/";if("string"!=
+typeof c)throw new TypeError("Arguments to path.resolve must be strings");if(!c)return"";b=c+"/"+b;c="/"===c.charAt(0)}b=eb(b.split("/").filter(e=>!!e),!c).join("/");return(c?"/":"")+b||"."},sb=[],ha=a=>{for(var b=0,c=0;c<a.length;++c){var d=a.charCodeAt(c);127>=d?b++:2047>=d?b+=2:55296<=d&&57343>=d?(b+=4,++c):b+=3}return b},q=(a,b,c,d)=>{if(!(0<d))return 0;var e=c;d=c+d-1;for(var h=0;h<a.length;++h){var k=a.charCodeAt(h);if(55296<=k&&57343>=k){var r=a.charCodeAt(++h);k=65536+((k&1023)<<10)|r&1023}if(127>=
+k){if(c>=d)break;b[c++]=k}else{if(2047>=k){if(c+1>=d)break;b[c++]=192|k>>6}else{if(65535>=k){if(c+2>=d)break;b[c++]=224|k>>12}else{if(c+3>=d)break;b[c++]=240|k>>18;b[c++]=128|k>>12&63}b[c++]=128|k>>6&63}b[c++]=128|k&63}}b[c]=0;return c-e};function qa(a,b){var c=Array(ha(a)+1);a=q(a,c,0,c.length);b&&(c.length=a);return c}var tb=[];function ub(a,b){tb[a]={input:[],output:[],Wa:b};vb(a,wb)}
+var wb={open(a){var b=tb[a.node.rdev];if(!b)throw new P(43);a.tty=b;a.seekable=!1},close(a){a.tty.Wa.fsync(a.tty)},fsync(a){a.tty.Wa.fsync(a.tty)},read(a,b,c,d){if(!a.tty||!a.tty.Wa.rb)throw new P(60);for(var e=0,h=0;h<d;h++){try{var k=a.tty.Wa.rb(a.tty)}catch(r){throw new P(29);}if(void 0===k&&0===e)throw new P(6);if(null===k||void 0===k)break;e++;b[c+h]=k}e&&(a.node.timestamp=Date.now());return e},write(a,b,c,d){if(!a.tty||!a.tty.Wa.ib)throw new P(60);try{for(var e=0;e<d;e++)a.tty.Wa.ib(a.tty,b[c+
+e])}catch(h){throw new P(29);}d&&(a.node.timestamp=Date.now());return e}},xb={rb(){a:{if(!sb.length){var a=null;if(ca){var b=Buffer.alloc(256),c=0,d=process.stdin.fd;try{c=fs.readSync(d,b,0,256)}catch(e){if(e.toString().includes("EOF"))c=0;else throw e;}0<c&&(a=b.slice(0,c).toString("utf-8"))}else"undefined"!=typeof window&&"function"==typeof window.prompt&&(a=window.prompt("Input: "),null!==a&&(a+="\n"));if(!a){a=null;break a}sb=qa(a,!0)}a=sb.shift()}return a},ib(a,b){null===b||10===b?(Ha(L(a.output,
+0)),a.output=[]):0!=b&&a.output.push(b)},fsync(a){a.output&&0<a.output.length&&(Ha(L(a.output,0)),a.output=[])},Lb(){return{Gb:25856,Ib:5,Fb:191,Hb:35387,Eb:[3,28,127,21,4,0,1,0,17,19,26,0,18,15,23,22,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}},Mb(){return 0},Nb(){return[24,80]}},yb={ib(a,b){null===b||10===b?(C(L(a.output,0)),a.output=[]):0!=b&&a.output.push(b)},fsync(a){a.output&&0<a.output.length&&(C(L(a.output,0)),a.output=[])}};
+function zb(a,b){var c=a.Ha?a.Ha.length:0;c>=b||(b=Math.max(b,c*(1048576>c?2:1.125)>>>0),0!=c&&(b=Math.max(b,256)),c=a.Ha,a.Ha=new Uint8Array(b),0<a.La&&a.Ha.set(c.subarray(0,a.La),0))}
+var Q={Pa:null,Qa(){return Q.createNode(null,"/",16895,0)},createNode(a,b,c,d){if(24576===(c&61440)||4096===(c&61440))throw new P(63);Q.Pa||(Q.Pa={dir:{node:{Oa:Q.Fa.Oa,Na:Q.Fa.Na,lookup:Q.Fa.lookup,$a:Q.Fa.$a,rename:Q.Fa.rename,unlink:Q.Fa.unlink,rmdir:Q.Fa.rmdir,readdir:Q.Fa.readdir,symlink:Q.Fa.symlink},stream:{Sa:Q.Ga.Sa}},file:{node:{Oa:Q.Fa.Oa,Na:Q.Fa.Na},stream:{Sa:Q.Ga.Sa,read:Q.Ga.read,write:Q.Ga.write,kb:Q.Ga.kb,ab:Q.Ga.ab,bb:Q.Ga.bb}},link:{node:{Oa:Q.Fa.Oa,Na:Q.Fa.Na,readlink:Q.Fa.readlink},
+stream:{}},ob:{node:{Oa:Q.Fa.Oa,Na:Q.Fa.Na},stream:Ab}});c=Bb(a,b,c,d);R(c.mode)?(c.Fa=Q.Pa.dir.node,c.Ga=Q.Pa.dir.stream,c.Ha={}):32768===(c.mode&61440)?(c.Fa=Q.Pa.file.node,c.Ga=Q.Pa.file.stream,c.La=0,c.Ha=null):40960===(c.mode&61440)?(c.Fa=Q.Pa.link.node,c.Ga=Q.Pa.link.stream):8192===(c.mode&61440)&&(c.Fa=Q.Pa.ob.node,c.Ga=Q.Pa.ob.stream);c.timestamp=Date.now();a&&(a.Ha[b]=c,a.timestamp=c.timestamp);return c},Kb(a){return a.Ha?a.Ha.subarray?a.Ha.subarray(0,a.La):new Uint8Array(a.Ha):new Uint8Array(0)},
+Fa:{Oa(a){var b={};b.dev=8192===(a.mode&61440)?a.id:1;b.ino=a.id;b.mode=a.mode;b.nlink=1;b.uid=0;b.gid=0;b.rdev=a.rdev;R(a.mode)?b.size=4096:32768===(a.mode&61440)?b.size=a.La:40960===(a.mode&61440)?b.size=a.link.length:b.size=0;b.atime=new Date(a.timestamp);b.mtime=new Date(a.timestamp);b.ctime=new Date(a.timestamp);b.yb=4096;b.blocks=Math.ceil(b.size/b.yb);return b},Na(a,b){void 0!==b.mode&&(a.mode=b.mode);void 0!==b.timestamp&&(a.timestamp=b.timestamp);if(void 0!==b.size&&(b=b.size,a.La!=b))if(0==
+b)a.Ha=null,a.La=0;else{var c=a.Ha;a.Ha=new Uint8Array(b);c&&a.Ha.set(c.subarray(0,Math.min(b,a.La)));a.La=b}},lookup(){throw Cb[44];},$a(a,b,c,d){return Q.createNode(a,b,c,d)},rename(a,b,c){if(R(a.mode)){try{var d=Db(b,c)}catch(h){}if(d)for(var e in d.Ha)throw new P(55);}delete a.parent.Ha[a.name];a.parent.timestamp=Date.now();a.name=c;b.Ha[c]=a;b.timestamp=a.parent.timestamp},unlink(a,b){delete a.Ha[b];a.timestamp=Date.now()},rmdir(a,b){var c=Db(a,b),d;for(d in c.Ha)throw new P(55);delete a.Ha[b];
+a.timestamp=Date.now()},readdir(a){var b=[".",".."],c;for(c of Object.keys(a.Ha))b.push(c);return b},symlink(a,b,c){a=Q.createNode(a,b,41471,0);a.link=c;return a},readlink(a){if(40960!==(a.mode&61440))throw new P(28);return a.link}},Ga:{read(a,b,c,d,e){var h=a.node.Ha;if(e>=a.node.La)return 0;a=Math.min(a.node.La-e,d);if(8<a&&h.subarray)b.set(h.subarray(e,e+a),c);else for(d=0;d<a;d++)b[c+d]=h[e+d];return a},write(a,b,c,d,e,h){b.buffer===p.buffer&&(h=!1);if(!d)return 0;a=a.node;a.timestamp=Date.now();
+if(b.subarray&&(!a.Ha||a.Ha.subarray)){if(h)return a.Ha=b.subarray(c,c+d),a.La=d;if(0===a.La&&0===e)return a.Ha=b.slice(c,c+d),a.La=d;if(e+d<=a.La)return a.Ha.set(b.subarray(c,c+d),e),d}zb(a,e+d);if(a.Ha.subarray&&b.subarray)a.Ha.set(b.subarray(c,c+d),e);else for(h=0;h<d;h++)a.Ha[e+h]=b[c+h];a.La=Math.max(a.La,e+d);return d},Sa(a,b,c){1===c?b+=a.position:2===c&&32768===(a.node.mode&61440)&&(b+=a.node.La);if(0>b)throw new P(28);return b},kb(a,b,c){zb(a.node,b+c);a.node.La=Math.max(a.node.La,b+c)},
+ab(a,b,c,d,e){if(32768!==(a.node.mode&61440))throw new P(43);a=a.node.Ha;if(e&2||a.buffer!==p.buffer){if(0<c||c+b<a.length)a.subarray?a=a.subarray(c,c+b):a=Array.prototype.slice.call(a,c,c+b);c=!0;b=65536*Math.ceil(b/65536);(e=Eb(65536,b))?(u.fill(0,e,e+b),b=e):b=0;if(!b)throw new P(48);p.set(a,b)}else c=!1,b=a.byteOffset;return{Cb:b,tb:c}},bb(a,b,c,d){Q.Ga.write(a,b,0,d,c,!1);return 0}}},ka=(a,b)=>{var c=0;a&&(c|=365);b&&(c|=146);return c},Fb=null,Gb={},Hb=[],Ib=1,S=null,Jb=!0,P=class{constructor(a){this.name=
+"ErrnoError";this.Ja=a}},Cb={},Kb=class{constructor(){this.Za={};this.node=null}get flags(){return this.Za.flags}set flags(a){this.Za.flags=a}get position(){return this.Za.position}set position(a){this.Za.position=a}},Lb=class{constructor(a,b,c,d){a||=this;this.parent=a;this.Qa=a.Qa;this.Ua=null;this.id=Ib++;this.name=b;this.mode=c;this.Fa={};this.Ga={};this.rdev=d}get read(){return 365===(this.mode&365)}set read(a){a?this.mode|=365:this.mode&=-366}get write(){return 146===(this.mode&146)}set write(a){a?
+this.mode|=146:this.mode&=-147}};function T(a,b={}){a=kb(a);if(!a)return{path:"",node:null};b=Object.assign({pb:!0,jb:0},b);if(8<b.jb)throw new P(32);a=a.split("/").filter(k=>!!k);for(var c=Fb,d="/",e=0;e<a.length;e++){var h=e===a.length-1;if(h&&b.parent)break;c=Db(c,a[e]);d=x(d+"/"+a[e]);c.Ua&&(!h||h&&b.pb)&&(c=c.Ua.root);if(!h||b.Ra)for(h=0;40960===(c.mode&61440);)if(c=Mb(d),d=kb(fb(d),c),c=T(d,{jb:b.jb+1}).node,40<h++)throw new P(32);}return{path:d,node:c}}
+function ja(a){for(var b;;){if(a===a.parent)return a=a.Qa.sb,b?"/"!==a[a.length-1]?`${a}/${b}`:a+b:a;b=b?`${a.name}/${b}`:a.name;a=a.parent}}function Nb(a,b){for(var c=0,d=0;d<b.length;d++)c=(c<<5)-c+b.charCodeAt(d)|0;return(a+c>>>0)%S.length}function Ob(a){var b=Nb(a.parent.id,a.name);if(S[b]===a)S[b]=a.Va;else for(b=S[b];b;){if(b.Va===a){b.Va=a.Va;break}b=b.Va}}
+function Db(a,b){var c=R(a.mode)?(c=Pb(a,"x"))?c:a.Fa.lookup?0:2:54;if(c)throw new P(c);for(c=S[Nb(a.id,b)];c;c=c.Va){var d=c.name;if(c.parent.id===a.id&&d===b)return c}return a.Fa.lookup(a,b)}function Bb(a,b,c,d){a=new Lb(a,b,c,d);b=Nb(a.parent.id,a.name);a.Va=S[b];return S[b]=a}function R(a){return 16384===(a&61440)}function Qb(a){var b=["r","w","rw"][a&3];a&512&&(b+="w");return b}
+function Pb(a,b){if(Jb)return 0;if(!b.includes("r")||a.mode&292){if(b.includes("w")&&!(a.mode&146)||b.includes("x")&&!(a.mode&73))return 2}else return 2;return 0}function Rb(a,b){try{return Db(a,b),20}catch(c){}return Pb(a,"wx")}function Sb(a,b,c){try{var d=Db(a,b)}catch(e){return e.Ja}if(a=Pb(a,"wx"))return a;if(c){if(!R(d.mode))return 54;if(d===d.parent||"/"===ja(d))return 10}else if(R(d.mode))return 31;return 0}function U(a){a=Hb[a];if(!a)throw new P(8);return a}
+function Tb(a,b=-1){a=Object.assign(new Kb,a);if(-1==b)a:{for(b=0;4096>=b;b++)if(!Hb[b])break a;throw new P(33);}a.fd=b;return Hb[b]=a}function Ub(a,b=-1){a=Tb(a,b);a.Ga?.Jb?.(a);return a}var Ab={open(a){a.Ga=Gb[a.node.rdev].Ga;a.Ga.open?.(a)},Sa(){throw new P(70);}};function vb(a,b){Gb[a]={Ga:b}}
+function Vb(a,b){var c="/"===b;if(c&&Fb)throw new P(10);if(!c&&b){var d=T(b,{pb:!1});b=d.path;d=d.node;if(d.Ua)throw new P(10);if(!R(d.mode))throw new P(54);}b={type:a,Ob:{},sb:b,Bb:[]};a=a.Qa(b);a.Qa=b;b.root=a;c?Fb=a:d&&(d.Ua=b,d.Qa&&d.Qa.Bb.push(b))}function la(a,b,c){var d=T(a,{parent:!0}).node;a=gb(a);if(!a||"."===a||".."===a)throw new P(28);var e=Rb(d,a);if(e)throw new P(e);if(!d.Fa.$a)throw new P(63);return d.Fa.$a(d,a,b,c)}function V(a,b){return la(a,(void 0!==b?b:511)&1023|16384,0)}
+function Wb(a,b,c){"undefined"==typeof c&&(c=b,b=438);la(a,b|8192,c)}function Xb(a,b){if(!kb(a))throw new P(44);var c=T(b,{parent:!0}).node;if(!c)throw new P(44);b=gb(b);var d=Rb(c,b);if(d)throw new P(d);if(!c.Fa.symlink)throw new P(63);c.Fa.symlink(c,b,a)}function Yb(a){var b=T(a,{parent:!0}).node;a=gb(a);var c=Db(b,a),d=Sb(b,a,!0);if(d)throw new P(d);if(!b.Fa.rmdir)throw new P(63);if(c.Ua)throw new P(10);b.Fa.rmdir(b,a);Ob(c)}
+function za(a){var b=T(a,{parent:!0}).node;if(!b)throw new P(44);a=gb(a);var c=Db(b,a),d=Sb(b,a,!1);if(d)throw new P(d);if(!b.Fa.unlink)throw new P(63);if(c.Ua)throw new P(10);b.Fa.unlink(b,a);Ob(c)}function Mb(a){a=T(a).node;if(!a)throw new P(44);if(!a.Fa.readlink)throw new P(28);return kb(ja(a.parent),a.Fa.readlink(a))}function Zb(a,b){a=T(a,{Ra:!b}).node;if(!a)throw new P(44);if(!a.Fa.Oa)throw new P(63);return a.Fa.Oa(a)}function $b(a){return Zb(a,!0)}
+function ma(a,b){a="string"==typeof a?T(a,{Ra:!0}).node:a;if(!a.Fa.Na)throw new P(63);a.Fa.Na(a,{mode:b&4095|a.mode&-4096,timestamp:Date.now()})}function ac(a,b){if(0>b)throw new P(28);a="string"==typeof a?T(a,{Ra:!0}).node:a;if(!a.Fa.Na)throw new P(63);if(R(a.mode))throw new P(31);if(32768!==(a.mode&61440))throw new P(28);var c=Pb(a,"w");if(c)throw new P(c);a.Fa.Na(a,{size:b,timestamp:Date.now()})}
+function na(a,b,c){if(""===a)throw new P(44);if("string"==typeof b){var d={r:0,"r+":2,w:577,"w+":578,a:1089,"a+":1090}[b];if("undefined"==typeof d)throw Error(`Unknown file open mode: ${b}`);b=d}c=b&64?("undefined"==typeof c?438:c)&4095|32768:0;if("object"==typeof a)var e=a;else{a=x(a);try{e=T(a,{Ra:!(b&131072)}).node}catch(h){}}d=!1;if(b&64)if(e){if(b&128)throw new P(20);}else e=la(a,c,0),d=!0;if(!e)throw new P(44);8192===(e.mode&61440)&&(b&=-513);if(b&65536&&!R(e.mode))throw new P(54);if(!d&&(c=
+e?40960===(e.mode&61440)?32:R(e.mode)&&("r"!==Qb(b)||b&512)?31:Pb(e,Qb(b)):44))throw new P(c);b&512&&!d&&ac(e,0);b&=-131713;e=Tb({node:e,path:ja(e),flags:b,seekable:!0,position:0,Ga:e.Ga,Db:[],error:!1});e.Ga.open&&e.Ga.open(e);!f.logReadFiles||b&1||(bc||={},a in bc||(bc[a]=1));return e}function pa(a){if(null===a.fd)throw new P(8);a.gb&&(a.gb=null);try{a.Ga.close&&a.Ga.close(a)}catch(b){throw b;}finally{Hb[a.fd]=null}a.fd=null}
+function cc(a,b,c){if(null===a.fd)throw new P(8);if(!a.seekable||!a.Ga.Sa)throw new P(70);if(0!=c&&1!=c&&2!=c)throw new P(28);a.position=a.Ga.Sa(a,b,c);a.Db=[]}function dc(a,b,c,d,e){if(0>d||0>e)throw new P(28);if(null===a.fd)throw new P(8);if(1===(a.flags&2097155))throw new P(8);if(R(a.node.mode))throw new P(31);if(!a.Ga.read)throw new P(28);var h="undefined"!=typeof e;if(!h)e=a.position;else if(!a.seekable)throw new P(70);b=a.Ga.read(a,b,c,d,e);h||(a.position+=b);return b}
+function oa(a,b,c,d,e){if(0>d||0>e)throw new P(28);if(null===a.fd)throw new P(8);if(0===(a.flags&2097155))throw new P(8);if(R(a.node.mode))throw new P(31);if(!a.Ga.write)throw new P(28);a.seekable&&a.flags&1024&&cc(a,0,2);var h="undefined"!=typeof e;if(!h)e=a.position;else if(!a.seekable)throw new P(70);b=a.Ga.write(a,b,c,d,e,void 0);h||(a.position+=b);return b}
+function ya(a){var b="binary";if("utf8"!==b&&"binary"!==b)throw Error(`Invalid encoding type "${b}"`);var c;var d=na(a,d||0);a=Zb(a).size;var e=new Uint8Array(a);dc(d,e,0,a,0);"utf8"===b?c=L(e,0):"binary"===b&&(c=e);pa(d);return c}var ec;
+function Fc(a,b,c){a=x("/dev/"+a);var d=ka(!!b,!!c);Hc||=64;var e=Hc++<<8|0;vb(e,{open(h){h.seekable=!1},close(){c?.buffer?.length&&c(10)},read(h,k,r,z){for(var v=0,E=0;E<z;E++){try{var H=b()}catch(mb){throw new P(29);}if(void 0===H&&0===v)throw new P(6);if(null===H||void 0===H)break;v++;k[r+E]=H}v&&(h.node.timestamp=Date.now());return v},write(h,k,r,z){for(var v=0;v<z;v++)try{c(k[r+v])}catch(E){throw new P(29);}z&&(h.node.timestamp=Date.now());return v}});Wb(a,d,e)}var Hc,W={},bc;
+function Ic(a,b,c){if("/"===b.charAt(0))return b;a=-100===a?"/":U(a).path;if(0==b.length){if(!c)throw new P(44);return a}return x(a+"/"+b)}
+function Jc(a,b,c){a=a(b);D[c>>2]=a.dev;D[c+4>>2]=a.mode;F[c+8>>2]=a.nlink;D[c+12>>2]=a.uid;D[c+16>>2]=a.gid;D[c+20>>2]=a.rdev;J=[a.size>>>0,(I=a.size,1<=+Math.abs(I)?0<I?+Math.floor(I/4294967296)>>>0:~~+Math.ceil((I-+(~~I>>>0))/4294967296)>>>0:0)];D[c+24>>2]=J[0];D[c+28>>2]=J[1];D[c+32>>2]=4096;D[c+36>>2]=a.blocks;b=a.atime.getTime();var d=a.mtime.getTime(),e=a.ctime.getTime();J=[Math.floor(b/1E3)>>>0,(I=Math.floor(b/1E3),1<=+Math.abs(I)?0<I?+Math.floor(I/4294967296)>>>0:~~+Math.ceil((I-+(~~I>>>
+0))/4294967296)>>>0:0)];D[c+40>>2]=J[0];D[c+44>>2]=J[1];F[c+48>>2]=b%1E3*1E3;J=[Math.floor(d/1E3)>>>0,(I=Math.floor(d/1E3),1<=+Math.abs(I)?0<I?+Math.floor(I/4294967296)>>>0:~~+Math.ceil((I-+(~~I>>>0))/4294967296)>>>0:0)];D[c+56>>2]=J[0];D[c+60>>2]=J[1];F[c+64>>2]=d%1E3*1E3;J=[Math.floor(e/1E3)>>>0,(I=Math.floor(e/1E3),1<=+Math.abs(I)?0<I?+Math.floor(I/4294967296)>>>0:~~+Math.ceil((I-+(~~I>>>0))/4294967296)>>>0:0)];D[c+72>>2]=J[0];D[c+76>>2]=J[1];F[c+80>>2]=e%1E3*1E3;J=[a.ino>>>0,(I=a.ino,1<=+Math.abs(I)?
+0<I?+Math.floor(I/4294967296)>>>0:~~+Math.ceil((I-+(~~I>>>0))/4294967296)>>>0:0)];D[c+88>>2]=J[0];D[c+92>>2]=J[1];return 0}var Kc=void 0;function Lc(){var a=D[+Kc>>2];Kc+=4;return a}
+var Mc=(a,b)=>b+2097152>>>0<4194305-!!a?(a>>>0)+4294967296*b:NaN,Nc=[0,31,60,91,121,152,182,213,244,274,305,335],Oc=[0,31,59,90,120,151,181,212,243,273,304,334],Pc={},Rc=()=>{if(!Qc){var a={USER:"web_user",LOGNAME:"web_user",PATH:"/",PWD:"/",HOME:"/home/web_user",LANG:("object"==typeof navigator&&navigator.languages&&navigator.languages[0]||"C").replace("-","_")+".UTF-8",_:Ca||"./this.program"},b;for(b in Pc)void 0===Pc[b]?delete a[b]:a[b]=Pc[b];var c=[];for(b in a)c.push(`${b}=${a[b]}`);Qc=c}return Qc},
+Qc,va=a=>{var b=ha(a)+1,c=y(b);q(a,u,c,b);return c},Sc=(a,b,c,d)=>{var e={string:v=>{var E=0;null!==v&&void 0!==v&&0!==v&&(E=va(v));return E},array:v=>{var E=y(v.length);p.set(v,E);return E}};a=f["_"+a];var h=[],k=0;if(d)for(var r=0;r<d.length;r++){var z=e[c[r]];z?(0===k&&(k=ra()),h[r]=z(d[r])):h[r]=d[r]}c=a(...h);return c=function(v){0!==k&&ua(k);return"string"===b?v?L(u,v):"":"boolean"===b?!!v:v}(c)},ea=0,da=(a,b)=>{b=1==b?y(a.length):ia(a.length);a.subarray||a.slice||(a=new Uint8Array(a));u.set(a,
+b);return b},Tc,Uc=[],X,wa=a=>{Tc.delete(X.get(a));X.set(a,null);Uc.push(a)},Aa=(a,b)=>{if(!Tc){Tc=new WeakMap;var c=X.length;if(Tc)for(var d=0;d<0+c;d++){var e=X.get(d);e&&Tc.set(e,d)}}if(c=Tc.get(a)||0)return c;if(Uc.length)c=Uc.pop();else{try{X.grow(1)}catch(r){if(!(r instanceof RangeError))throw r;throw"Unable to grow wasm table. Set ALLOW_TABLE_GROWTH.";}c=X.length-1}try{X.set(c,a)}catch(r){if(!(r instanceof TypeError))throw r;if("function"==typeof WebAssembly.Function){d=WebAssembly.Function;
+e={i:"i32",j:"i64",f:"f32",d:"f64",e:"externref",p:"i32"};for(var h={parameters:[],results:"v"==b[0]?[]:[e[b[0]]]},k=1;k<b.length;++k)h.parameters.push(e[b[k]]);b=new d(h,a)}else{d=[1];e=b.slice(0,1);b=b.slice(1);h={i:127,p:127,j:126,f:125,d:124,e:111};d.push(96);k=b.length;128>k?d.push(k):d.push(k%128|128,k>>7);for(k=0;k<b.length;++k)d.push(h[b[k]]);"v"==e?d.push(0):d.push(1,h[e]);b=[0,97,115,109,1,0,0,0,1];e=d.length;128>e?b.push(e):b.push(e%128|128,e>>7);b.push(...d);b.push(2,7,1,1,101,1,102,0,
+0,7,5,1,1,102,0,0);b=new WebAssembly.Module(new Uint8Array(b));b=(new WebAssembly.Instance(b,{e:{f:a}})).exports.f}X.set(c,b)}Tc.set(a,c);return c};[44].forEach(a=>{Cb[a]=new P(a);Cb[a].stack="<generic error, no stack>"});S=Array(4096);Vb(Q,"/");V("/tmp");V("/home");V("/home/web_user");
+(function(){V("/dev");vb(259,{read:()=>0,write:(d,e,h,k)=>k});Wb("/dev/null",259);ub(1280,xb);ub(1536,yb);Wb("/dev/tty",1280);Wb("/dev/tty1",1536);var a=new Uint8Array(1024),b=0,c=()=>{0===b&&(b=jb(a).byteLength);return a[--b]};Fc("random",c);Fc("urandom",c);V("/dev/shm");V("/dev/shm/tmp")})();
+(function(){V("/proc");var a=V("/proc/self");V("/proc/self/fd");Vb({Qa(){var b=Bb(a,"fd",16895,73);b.Fa={lookup(c,d){var e=U(+d);c={parent:null,Qa:{sb:"fake"},Fa:{readlink:()=>e.path}};return c.parent=c}};return b}},"/proc/self/fd")})();
+var Vc={a:(a,b,c,d)=>{G(`Assertion failed: ${a?L(u,a):""}, at: `+[b?b?L(u,b):"":"unknown filename",c,d?d?L(u,d):"":"unknown function"])},h:function(a,b){try{return a=a?L(u,a):"",ma(a,b),0}catch(c){if("undefined"==typeof W||"ErrnoError"!==c.name)throw c;return-c.Ja}},H:function(a,b,c){try{b=b?L(u,b):"";b=Ic(a,b);if(c&-8)return-28;var d=T(b,{Ra:!0}).node;if(!d)return-44;a="";c&4&&(a+="r");c&2&&(a+="w");c&1&&(a+="x");return a&&Pb(d,a)?-2:0}catch(e){if("undefined"==typeof W||"ErrnoError"!==e.name)throw e;
+return-e.Ja}},i:function(a,b){try{var c=U(a);ma(c.node,b);return 0}catch(d){if("undefined"==typeof W||"ErrnoError"!==d.name)throw d;return-d.Ja}},g:function(a){try{var b=U(a).node;var c="string"==typeof b?T(b,{Ra:!0}).node:b;if(!c.Fa.Na)throw new P(63);c.Fa.Na(c,{timestamp:Date.now()});return 0}catch(d){if("undefined"==typeof W||"ErrnoError"!==d.name)throw d;return-d.Ja}},b:function(a,b,c){Kc=c;try{var d=U(a);switch(b){case 0:var e=Lc();if(0>e)break;for(;Hb[e];)e++;return Ub(d,e).fd;case 1:case 2:return 0;
+case 3:return d.flags;case 4:return e=Lc(),d.flags|=e,0;case 12:return e=Lc(),La[e+0>>1]=2,0;case 13:case 14:return 0}return-28}catch(h){if("undefined"==typeof W||"ErrnoError"!==h.name)throw h;return-h.Ja}},f:function(a,b){try{var c=U(a);return Jc(Zb,c.path,b)}catch(d){if("undefined"==typeof W||"ErrnoError"!==d.name)throw d;return-d.Ja}},n:function(a,b,c){b=Mc(b,c);try{if(isNaN(b))return 61;var d=U(a);if(0===(d.flags&2097155))throw new P(28);ac(d.node,b);return 0}catch(e){if("undefined"==typeof W||
+"ErrnoError"!==e.name)throw e;return-e.Ja}},C:function(a,b){try{if(0===b)return-28;var c=ha("/")+1;if(b<c)return-68;q("/",u,a,b);return c}catch(d){if("undefined"==typeof W||"ErrnoError"!==d.name)throw d;return-d.Ja}},F:function(a,b){try{return a=a?L(u,a):"",Jc($b,a,b)}catch(c){if("undefined"==typeof W||"ErrnoError"!==c.name)throw c;return-c.Ja}},z:function(a,b,c){try{return b=b?L(u,b):"",b=Ic(a,b),b=x(b),"/"===b[b.length-1]&&(b=b.substr(0,b.length-1)),V(b,c),0}catch(d){if("undefined"==typeof W||"ErrnoError"!==
+d.name)throw d;return-d.Ja}},E:function(a,b,c,d){try{b=b?L(u,b):"";var e=d&256;b=Ic(a,b,d&4096);return Jc(e?$b:Zb,b,c)}catch(h){if("undefined"==typeof W||"ErrnoError"!==h.name)throw h;return-h.Ja}},x:function(a,b,c,d){Kc=d;try{b=b?L(u,b):"";b=Ic(a,b);var e=d?Lc():0;return na(b,c,e).fd}catch(h){if("undefined"==typeof W||"ErrnoError"!==h.name)throw h;return-h.Ja}},v:function(a,b,c,d){try{b=b?L(u,b):"";b=Ic(a,b);if(0>=d)return-28;var e=Mb(b),h=Math.min(d,ha(e)),k=p[c+h];q(e,u,c,d+1);p[c+h]=k;return h}catch(r){if("undefined"==
+typeof W||"ErrnoError"!==r.name)throw r;return-r.Ja}},u:function(a){try{return a=a?L(u,a):"",Yb(a),0}catch(b){if("undefined"==typeof W||"ErrnoError"!==b.name)throw b;return-b.Ja}},G:function(a,b){try{return a=a?L(u,a):"",Jc(Zb,a,b)}catch(c){if("undefined"==typeof W||"ErrnoError"!==c.name)throw c;return-c.Ja}},r:function(a,b,c){try{return b=b?L(u,b):"",b=Ic(a,b),0===c?za(b):512===c?Yb(b):G("Invalid flags passed to unlinkat"),0}catch(d){if("undefined"==typeof W||"ErrnoError"!==d.name)throw d;return-d.Ja}},
+q:function(a,b,c){try{b=b?L(u,b):"";b=Ic(a,b,!0);if(c){var d=F[c>>2]+4294967296*D[c+4>>2],e=D[c+8>>2];h=1E3*d+e/1E6;c+=16;d=F[c>>2]+4294967296*D[c+4>>2];e=D[c+8>>2];k=1E3*d+e/1E6}else var h=Date.now(),k=h;a=h;var r=T(b,{Ra:!0}).node;r.Fa.Na(r,{timestamp:Math.max(a,k)});return 0}catch(z){if("undefined"==typeof W||"ErrnoError"!==z.name)throw z;return-z.Ja}},l:function(a,b,c){a=new Date(1E3*Mc(a,b));D[c>>2]=a.getSeconds();D[c+4>>2]=a.getMinutes();D[c+8>>2]=a.getHours();D[c+12>>2]=a.getDate();D[c+16>>
+2]=a.getMonth();D[c+20>>2]=a.getFullYear()-1900;D[c+24>>2]=a.getDay();b=a.getFullYear();D[c+28>>2]=(0!==b%4||0===b%100&&0!==b%400?Oc:Nc)[a.getMonth()]+a.getDate()-1|0;D[c+36>>2]=-(60*a.getTimezoneOffset());b=(new Date(a.getFullYear(),6,1)).getTimezoneOffset();var d=(new Date(a.getFullYear(),0,1)).getTimezoneOffset();D[c+32>>2]=(b!=d&&a.getTimezoneOffset()==Math.min(d,b))|0},j:function(a,b,c,d,e,h,k,r){e=Mc(e,h);try{if(isNaN(e))return 61;var z=U(d);if(0!==(b&2)&&0===(c&2)&&2!==(z.flags&2097155))throw new P(2);
+if(1===(z.flags&2097155))throw new P(2);if(!z.Ga.ab)throw new P(43);var v=z.Ga.ab(z,a,e,b,c);var E=v.Cb;D[k>>2]=v.tb;F[r>>2]=E;return 0}catch(H){if("undefined"==typeof W||"ErrnoError"!==H.name)throw H;return-H.Ja}},k:function(a,b,c,d,e,h,k){h=Mc(h,k);try{var r=U(e);if(c&2){if(32768!==(r.node.mode&61440))throw new P(43);if(!(d&2)){var z=u.slice(a,a+b);r.Ga.bb&&r.Ga.bb(r,z,h,b,d)}}}catch(v){if("undefined"==typeof W||"ErrnoError"!==v.name)throw v;return-v.Ja}},y:(a,b,c,d)=>{var e=(new Date).getFullYear(),
+h=(new Date(e,0,1)).getTimezoneOffset();e=(new Date(e,6,1)).getTimezoneOffset();F[a>>2]=60*Math.max(h,e);D[b>>2]=Number(h!=e);b=k=>{var r=Math.abs(k);return`UTC${0<=k?"-":"+"}${String(Math.floor(r/60)).padStart(2,"0")}${String(r%60).padStart(2,"0")}`};a=b(h);b=b(e);e<h?(q(a,u,c,17),q(b,u,d,17)):(q(a,u,d,17),q(b,u,c,17))},d:()=>Date.now(),s:()=>2147483648,c:()=>performance.now(),o:a=>{var b=u.length;a>>>=0;if(2147483648<a)return!1;for(var c=1;4>=c;c*=2){var d=b*(1+.2/c);d=Math.min(d,a+100663296);var e=
+Math;d=Math.max(a,d);a:{e=(e.min.call(e,2147483648,d+(65536-d%65536)%65536)-Ja.buffer.byteLength+65535)/65536;try{Ja.grow(e);Oa();var h=1;break a}catch(k){}h=void 0}if(h)return!0}return!1},A:(a,b)=>{var c=0;Rc().forEach((d,e)=>{var h=b+c;e=F[a+4*e>>2]=h;for(h=0;h<d.length;++h)p[e++]=d.charCodeAt(h);p[e]=0;c+=d.length+1});return 0},B:(a,b)=>{var c=Rc();F[a>>2]=c.length;var d=0;c.forEach(e=>d+=e.length+1);F[b>>2]=d;return 0},e:function(a){try{var b=U(a);pa(b);return 0}catch(c){if("undefined"==typeof W||
+"ErrnoError"!==c.name)throw c;return c.Ja}},p:function(a,b){try{var c=U(a);p[b]=c.tty?2:R(c.mode)?3:40960===(c.mode&61440)?7:4;La[b+2>>1]=0;J=[0,(I=0,1<=+Math.abs(I)?0<I?+Math.floor(I/4294967296)>>>0:~~+Math.ceil((I-+(~~I>>>0))/4294967296)>>>0:0)];D[b+8>>2]=J[0];D[b+12>>2]=J[1];J=[0,(I=0,1<=+Math.abs(I)?0<I?+Math.floor(I/4294967296)>>>0:~~+Math.ceil((I-+(~~I>>>0))/4294967296)>>>0:0)];D[b+16>>2]=J[0];D[b+20>>2]=J[1];return 0}catch(d){if("undefined"==typeof W||"ErrnoError"!==d.name)throw d;return d.Ja}},
+w:function(a,b,c,d){try{a:{var e=U(a);a=b;for(var h,k=b=0;k<c;k++){var r=F[a>>2],z=F[a+4>>2];a+=8;var v=dc(e,p,r,z,h);if(0>v){var E=-1;break a}b+=v;if(v<z)break;"undefined"!=typeof h&&(h+=v)}E=b}F[d>>2]=E;return 0}catch(H){if("undefined"==typeof W||"ErrnoError"!==H.name)throw H;return H.Ja}},m:function(a,b,c,d,e){b=Mc(b,c);try{if(isNaN(b))return 61;var h=U(a);cc(h,b,d);J=[h.position>>>0,(I=h.position,1<=+Math.abs(I)?0<I?+Math.floor(I/4294967296)>>>0:~~+Math.ceil((I-+(~~I>>>0))/4294967296)>>>0:0)];
+D[e>>2]=J[0];D[e+4>>2]=J[1];h.gb&&0===b&&0===d&&(h.gb=null);return 0}catch(k){if("undefined"==typeof W||"ErrnoError"!==k.name)throw k;return k.Ja}},D:function(a){try{var b=U(a);return b.Ga?.fsync?b.Ga.fsync(b):0}catch(c){if("undefined"==typeof W||"ErrnoError"!==c.name)throw c;return c.Ja}},t:function(a,b,c,d){try{a:{var e=U(a);a=b;for(var h,k=b=0;k<c;k++){var r=F[a>>2],z=F[a+4>>2];a+=8;var v=oa(e,p,r,z,h);if(0>v){var E=-1;break a}b+=v;"undefined"!=typeof h&&(h+=v)}E=b}F[d>>2]=E;return 0}catch(H){if("undefined"==
+typeof W||"ErrnoError"!==H.name)throw H;return H.Ja}}},Z=function(){function a(c){Z=c.exports;Ja=Z.I;Oa();X=Z.K;Qa.unshift(Z.J);Ua--;f.monitorRunDependencies?.(Ua);0==Ua&&(null!==Va&&(clearInterval(Va),Va=null),Wa&&(c=Wa,Wa=null,c()));return Z}var b={a:Vc};Ua++;f.monitorRunDependencies?.(Ua);if(f.instantiateWasm)try{return f.instantiateWasm(b,a)}catch(c){return C(`Module.instantiateWasm callback failed with error: ${c}`),!1}Ya||=Xa("sql-wasm.wasm")?"sql-wasm.wasm":f.locateFile?f.locateFile("sql-wasm.wasm",
+B):B+"sql-wasm.wasm";bb(b,function(c){a(c.instance)});return{}}();f._sqlite3_free=a=>(f._sqlite3_free=Z.L)(a);f._sqlite3_value_text=a=>(f._sqlite3_value_text=Z.M)(a);f._sqlite3_prepare_v2=(a,b,c,d,e)=>(f._sqlite3_prepare_v2=Z.N)(a,b,c,d,e);f._sqlite3_step=a=>(f._sqlite3_step=Z.O)(a);f._sqlite3_reset=a=>(f._sqlite3_reset=Z.P)(a);f._sqlite3_exec=(a,b,c,d,e)=>(f._sqlite3_exec=Z.Q)(a,b,c,d,e);f._sqlite3_finalize=a=>(f._sqlite3_finalize=Z.R)(a);
+f._sqlite3_column_name=(a,b)=>(f._sqlite3_column_name=Z.S)(a,b);f._sqlite3_column_text=(a,b)=>(f._sqlite3_column_text=Z.T)(a,b);f._sqlite3_column_type=(a,b)=>(f._sqlite3_column_type=Z.U)(a,b);f._sqlite3_errmsg=a=>(f._sqlite3_errmsg=Z.V)(a);f._sqlite3_clear_bindings=a=>(f._sqlite3_clear_bindings=Z.W)(a);f._sqlite3_value_blob=a=>(f._sqlite3_value_blob=Z.X)(a);f._sqlite3_value_bytes=a=>(f._sqlite3_value_bytes=Z.Y)(a);f._sqlite3_value_double=a=>(f._sqlite3_value_double=Z.Z)(a);
+f._sqlite3_value_int=a=>(f._sqlite3_value_int=Z._)(a);f._sqlite3_value_type=a=>(f._sqlite3_value_type=Z.$)(a);f._sqlite3_result_blob=(a,b,c,d)=>(f._sqlite3_result_blob=Z.aa)(a,b,c,d);f._sqlite3_result_double=(a,b)=>(f._sqlite3_result_double=Z.ba)(a,b);f._sqlite3_result_error=(a,b,c)=>(f._sqlite3_result_error=Z.ca)(a,b,c);f._sqlite3_result_int=(a,b)=>(f._sqlite3_result_int=Z.da)(a,b);f._sqlite3_result_int64=(a,b,c)=>(f._sqlite3_result_int64=Z.ea)(a,b,c);
+f._sqlite3_result_null=a=>(f._sqlite3_result_null=Z.fa)(a);f._sqlite3_result_text=(a,b,c,d)=>(f._sqlite3_result_text=Z.ga)(a,b,c,d);f._sqlite3_aggregate_context=(a,b)=>(f._sqlite3_aggregate_context=Z.ha)(a,b);f._sqlite3_column_count=a=>(f._sqlite3_column_count=Z.ia)(a);f._sqlite3_data_count=a=>(f._sqlite3_data_count=Z.ja)(a);f._sqlite3_column_blob=(a,b)=>(f._sqlite3_column_blob=Z.ka)(a,b);f._sqlite3_column_bytes=(a,b)=>(f._sqlite3_column_bytes=Z.la)(a,b);
+f._sqlite3_column_double=(a,b)=>(f._sqlite3_column_double=Z.ma)(a,b);f._sqlite3_bind_blob=(a,b,c,d,e)=>(f._sqlite3_bind_blob=Z.na)(a,b,c,d,e);f._sqlite3_bind_double=(a,b,c)=>(f._sqlite3_bind_double=Z.oa)(a,b,c);f._sqlite3_bind_int=(a,b,c)=>(f._sqlite3_bind_int=Z.pa)(a,b,c);f._sqlite3_bind_text=(a,b,c,d,e)=>(f._sqlite3_bind_text=Z.qa)(a,b,c,d,e);f._sqlite3_bind_parameter_index=(a,b)=>(f._sqlite3_bind_parameter_index=Z.ra)(a,b);f._sqlite3_sql=a=>(f._sqlite3_sql=Z.sa)(a);
+f._sqlite3_normalized_sql=a=>(f._sqlite3_normalized_sql=Z.ta)(a);f._sqlite3_changes=a=>(f._sqlite3_changes=Z.ua)(a);f._sqlite3_close_v2=a=>(f._sqlite3_close_v2=Z.va)(a);f._sqlite3_create_function_v2=(a,b,c,d,e,h,k,r,z)=>(f._sqlite3_create_function_v2=Z.wa)(a,b,c,d,e,h,k,r,z);f._sqlite3_open=(a,b)=>(f._sqlite3_open=Z.xa)(a,b);var ia=f._malloc=a=>(ia=f._malloc=Z.ya)(a),fa=f._free=a=>(fa=f._free=Z.za)(a);f._RegisterExtensionFunctions=a=>(f._RegisterExtensionFunctions=Z.Aa)(a);
+var Eb=(a,b)=>(Eb=Z.Ba)(a,b),ua=a=>(ua=Z.Ca)(a),y=a=>(y=Z.Da)(a),ra=()=>(ra=Z.Ea)();f.stackSave=()=>ra();f.stackRestore=a=>ua(a);f.stackAlloc=a=>y(a);f.cwrap=(a,b,c,d)=>{var e=!c||c.every(h=>"number"===h||"boolean"===h);return"string"!==b&&e&&!d?f["_"+a]:(...h)=>Sc(a,b,c,h)};f.addFunction=Aa;f.removeFunction=wa;f.UTF8ToString=ta;f.ALLOC_NORMAL=ea;f.allocate=da;f.allocateUTF8OnStack=va;var Wc;Wa=function Xc(){Wc||Yc();Wc||(Wa=Xc)};
+function Yc(){function a(){if(!Wc&&(Wc=!0,f.calledRun=!0,!Ka)){f.noFSInit||ec||(ec=!0,f.stdin=f.stdin,f.stdout=f.stdout,f.stderr=f.stderr,f.stdin?Fc("stdin",f.stdin):Xb("/dev/tty","/dev/stdin"),f.stdout?Fc("stdout",null,f.stdout):Xb("/dev/tty","/dev/stdout"),f.stderr?Fc("stderr",null,f.stderr):Xb("/dev/tty1","/dev/stderr"),na("/dev/stdin",0),na("/dev/stdout",1),na("/dev/stderr",1));Jb=!1;cb(Qa);f.onRuntimeInitialized?.();if(f.postRun)for("function"==typeof f.postRun&&(f.postRun=[f.postRun]);f.postRun.length;){var b=
+f.postRun.shift();Sa.unshift(b)}cb(Sa)}}if(!(0<Ua)){if(f.preRun)for("function"==typeof f.preRun&&(f.preRun=[f.preRun]);f.preRun.length;)Ta();cb(Pa);0<Ua||(f.setStatus?(f.setStatus("Running..."),setTimeout(function(){setTimeout(function(){f.setStatus("")},1);a()},1)):a())}}if(f.preInit)for("function"==typeof f.preInit&&(f.preInit=[f.preInit]);0<f.preInit.length;)f.preInit.pop()();Yc();
+
+
+        // The shell-pre.js and emcc-generated code goes above
+        return Module;
+    }); // The end of the promise being returned
+
+  return initSqlJsPromise;
+} // The end of our initSqlJs function
+
+// This bit below is copied almost exactly from what you get when you use the MODULARIZE=1 flag with emcc
+// However, we don't want to use the emcc modularization. See shell-pre.js
+if (typeof exports === 'object' && typeof module === 'object'){
+    module.exports = initSqlJs;
+    // This will allow the module to be used in ES6 or CommonJS
+    module.exports.default = initSqlJs;
+}
+else if (typeof define === 'function' && define['amd']) {
+    define([], function() { return initSqlJs; });
+}
+else if (typeof exports === 'object'){
+    exports["Module"] = initSqlJs;
+}
+
+</script>
+
+<script>
+/* =========================================================================
+   IL-2 Korea — Career File Viewer
+   Read-only. Opens a career .db (plain SQLite 3) and decodes it.
+
+   The career file stores a lot of meaning in opaque integers and in
+   URL-encoded "key=value&key=value" blobs stuffed inside varchar columns.
+   Everything in the DECODE section below was derived empirically by
+   cross-referencing five real career files; anything that could not be
+   established from that evidence is rendered with a dotted underline and
+   its raw value, rather than guessed at.
+   ========================================================================= */
+
+const $  = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+
+const App = {
+  SQL: null,          // sql.js module
+  db: null,           // open database
+  handle: null,       // FileSystemFileHandle, when available
+  fileName: '',
+  fsApi: (typeof window.showOpenFilePicker === 'function'),
+  tab: 'overview',
+  data: null,         // decoded career model
+};
+
+/* ------------------------------ Utilities ------------------------------ */
+
+function esc(s){
+  if(s === null || s === undefined) return '';
+  return String(s).replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* The game packs sub-records into single columns as URL-encoded
+   "key=value&key=value". Both halves are percent-encoded, and mission
+   results are encoded twice, so decoding has to be tolerant. */
+function kv(str){
+  const out = {};
+  if(!str) return out;
+  for(const part of String(str).split('&')){
+    if(!part) continue;
+    const i = part.indexOf('=');
+    if(i < 0) continue;
+    out[dec(part.slice(0, i))] = dec(part.slice(i + 1));
+  }
+  return out;
+}
+function dec(s){
+  try { return decodeURIComponent(s); } catch(e){ return s; }
+}
+
+function fmtDur(sec){
+  sec = Number(sec) || 0;
+  const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60);
+  if(h === 0 && m === 0) return '—';
+  if(h === 0) return m + 'm';
+  return h + 'h ' + String(m).padStart(2, '0') + 'm';
+}
+function fmtHours(sec){
+  return ((Number(sec) || 0) / 3600).toFixed(1);
+}
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+/* Dates are stored as "YYYY.MM.DD" or "YYYY.MM.DD HH:MM:SS".
+   "0000.00.00" is the game's null date. */
+function parseDate(d){
+  if(!d) return null;
+  const m = String(d).match(/^(\d{4})\.(\d{2})\.(\d{2})(?:\s+(\d{2}):(\d{2}):(\d{2}))?/);
+  if(!m || m[1] === '0000') return null;
+  return { y:+m[1], mo:+m[2], d:+m[3], h:m[4] ? +m[4] : null, mi:m[5] ? +m[5] : null,
+           key: m[1] + m[2] + m[3] };
+}
+function fmtDate(d){
+  const p = parseDate(d);
+  if(!p) return '—';
+  return p.d + ' ' + MONTHS[p.mo - 1] + ' ' + p.y;
+}
+function fmtTime(d){
+  const p = parseDate(d);
+  if(!p || p.h === null) return '';
+  return String(p.h).padStart(2,'0') + ':' + String(p.mi).padStart(2,'0');
+}
+function daysBetween(a, b){
+  const pa = parseDate(a), pb = parseDate(b);
+  if(!pa || !pb) return null;
+  return Math.round((Date.UTC(pb.y, pb.mo-1, pb.d) - Date.UTC(pa.y, pa.mo-1, pa.d)) / 86400000);
+}
+
+function toast(msg, isErr){
+  const prev = $('.toast'); if(prev) prev.remove();
+  const t = document.createElement('div');
+  t.className = 'toast' + (isErr ? ' err' : '');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), isErr ? 7000 : 3800);
+}
+
+/* A value we could not decode with confidence: show the label we believe
+   is right, but mark it and keep the raw number visible on hover. */
+function unv(label, raw){
+  return '<span class="unv" title="Best-guess label — raw value ' + esc(raw) +
+         '. Not confirmed against game data.">' + esc(label) + '</span>';
+}
+
+/* ------------------------------ DECODE ------------------------------ */
+
+const COUNTRY = {
+  502: { code:'PLAAF', name:"People's Liberation Army Air Force" },
+  503: { code:'KPAF',  name:"Korean People's Army Air Force" },
+  601: { code:'USAF',  name:'United States Air Force' },
+  101: { code:'VVS',   name:'Soviet Air Force' },
+};
+function country(id){
+  return COUNTRY[id] || { code:'#' + id, name:'Country ' + id };
+}
+
+const PLANES = {
+  mig15bis:'MiG-15bis', mig15:'MiG-15', la11:'La-11', la9:'La-9',
+  f86a5:'F-86A-5', f86f:'F-86F', f80c:'F-80C', f80c10:'F-80C-10',
+  f84e:'F-84E', f51d:'F-51D', p51d:'P-51D', c47b:'C-47B',
+  b29:'B-29', simpleb29:'B-29', il10:'Il-10', yak9:'Yak-9',
+  yak9p:'Yak-9P', tu2:'Tu-2',
+};
+function planeName(cfgPath){
+  if(!cfgPath) return '—';
+  const key = String(cfgPath).split(/[\\/]/).pop().replace(/\.txt$/i, '').toLowerCase();
+  return PLANES[key] || key;
+}
+
+/* Ground and naval targets, as they appear in victory records. Anything not
+   named here falls through to the scenery cleanup below. */
+const GROUND = {
+  't34-85':'T-34-85', is2:'IS-2', zis3:'ZiS-3', dshk:'DShK', 'dshk-aa':'DShK (AA)',
+  'm2a1-105mm':'M2A1 105mm', m1aaa120:'M1 120mm AA', m30:'M30 howitzer',
+  'm30-mortar':'M30 mortar', bm37:'BM-37 mortar', ks12:'KS-12 88mm',
+  ks19:'KS-19 100mm', s60:'S-60 57mm', '61k':'61-K 37mm', '72k':'72-K 25mm',
+  'm16-mgmc':'M16 MGMC', m19:'M19 AA', 'm1919-aa':'M1919 (AA)', 'rp15-1':'RP-15',
+  gaz55:'GAZ-55', gaz63:'GAZ-63', static_car_gaz63:'GAZ-63 (parked)',
+  studebakerus6:'Studebaker US6', 'zpuvz53-ontruck-attach':'ZPU on truck',
+  'squad-mg-1950-prc':'PLA machine-gun squad',
+  'squad-smg-1950-dprk':'KPA infantry squad',
+};
+
+/* Scenery and materiel objects use prefixed, numbered internal names
+   (Mil_boxes_03, Arf_hangar_03_2x, Ind_warehouse_04). Strip the prefix and
+   the trailing variant digits, then humanise what is left. */
+const SCENERY_PREFIX = /^(mil|arf|ind|port_yard|port|static_munition_su|static_plane|static_car|static|bridge)[_-]/i;
+/* Run-together words the game uses in object names. */
+const WORD_FIX = [
+  [/fuelcisterns?/g, 'fuel cistern'], [/ammoboxes/g, 'ammo box'],
+  [/camonet/g, 'camo net'], [/\brd\b/g, 'road'], [/\bmg\b/g, 'MG'],
+  [/fab\d*stack/g, 'bomb stack'],
+];
+function targetName(raw){
+  if(!raw) return '—';
+  const key = String(raw).toLowerCase();
+  if(PLANES[key]) return PLANES[key];
+  if(GROUND[key]) return GROUND[key];
+  if(!SCENERY_PREFIX.test(key)) return raw;
+
+  const parked = /^static_(plane|car)/i.test(key);
+  let s = key.replace(SCENERY_PREFIX, '');
+  // A stripped prefix can reveal a name we do know (Static_plane_Yak9P).
+  if(PLANES[s]) return PLANES[s] + (parked ? ' (parked)' : '');
+  if(GROUND[s]) return GROUND[s];
+  // Trailing variant markers stack up: _02_block_01, _03_2x, _04.
+  let prev;
+  do { prev = s; s = s.replace(/_(?:block_)?\d+[a-z]?$/i, '').replace(/_\d+x$/i, ''); }
+  while(s !== prev);
+
+  s = s.replace(/[_-]+/g, ' ').trim();
+  for(const [re, to] of WORD_FIX) s = s.replace(re, to);
+  if(/^bridge/i.test(raw)) s = 'bridge ' + s;
+  if(!s) s = key;
+  return s.charAt(0).toUpperCase() + s.slice(1) + (parked && !/parked/.test(s) ? ' (parked)' : '');
+}
+
+/* mission.type / target.type.
+   Labels derived from each type's briefing text and target template name
+   across the sample careers. 11xx = air-to-air, 12xx = ground attack,
+   13xx = close support. Types with no observed briefing keep a category
+   label only, and are marked as unverified. */
+const MISSION_TYPE = {
+  1101:{ n:'Intercept Bombers',        c:'air',    sure:true  },
+  1105:{ n:'Intercept Fighters',       c:'air',    sure:true  },
+  1108:{ n:'Intercept Heavy Bombers',  c:'air',    sure:true  },
+  1121:{ n:'Air Cover Patrol',         c:'air',    sure:true  },
+  1128:{ n:'Air Patrol',               c:'air',    sure:false },
+  1153:{ n:'Cover Transports',         c:'air',    sure:true  },
+  1156:{ n:'Escort Bombers',           c:'air',    sure:true  },
+  1201:{ n:'Ground Attack — Column',   c:'ground', sure:false },
+  1202:{ n:'Ground Attack',            c:'ground', sure:false },
+  1203:{ n:'Ground Attack',            c:'ground', sure:false },
+  1204:{ n:'Ground Attack — Installations', c:'ground', sure:true },
+  1205:{ n:'Ground Attack',            c:'ground', sure:false },
+  1206:{ n:'Airfield Attack',          c:'ground', sure:true  },
+  1215:{ n:'Ground Attack',            c:'ground', sure:false },
+  1304:{ n:'Close Air Support',        c:'ground', sure:true  },
+};
+function missionType(t){
+  const m = MISSION_TYPE[t];
+  if(!m) return unv('Mission type ' + t, t);
+  return m.sure ? esc(m.n) : unv(m.n, t);
+}
+function missionTypePlain(t){
+  const m = MISSION_TYPE[t];
+  return m ? m.n : 'Type ' + t;
+}
+
+/* pilot.state — established by correlating with health and slot:
+   a pilot with slot >= 1000 has left the active roster. */
+const PILOT_STATE = {
+  0:{ n:'Active',      b:'ok',      sure:true  },
+  2:{ n:'Killed',      b:'bad',     sure:true  },
+  3:{ n:'Left unit',   b:'neutral', sure:false },
+  4:{ n:'In hospital', b:'warn',    sure:false },
+};
+const PLANE_STATE = {
+  0:{ n:'Serviceable', b:'ok',   sure:true  },
+  2:{ n:'Destroyed',   b:'bad',  sure:true  },
+  3:{ n:'Damaged',     b:'warn', sure:true  },
+};
+/* sortie.status — 2 and 3 pair exactly with pilot deaths and woundings and
+   with planeStatus=3. Status 4 is common, non-fatal, and often carries
+   kills, so it is certainly not a loss, but its exact meaning is unproven. */
+const SORTIE_STATUS = {
+  0:{ n:'Returned',        b:'ok',      sure:true  },
+  2:{ n:'Killed',          b:'bad',     sure:true  },
+  3:{ n:'Wounded',         b:'warn',    sure:true  },
+  4:{ n:'Did not return',  b:'neutral', sure:false },
+};
+const CAREER_STATE = {
+  0:{ n:'Active',  sure:true },
+  4:{ n:'Ended',   sure:false },
+};
+const MISSION_STATE = {
+  1:{ n:'Flown',      b:'ok',      sure:true  },
+  2:{ n:'Not flown',  b:'neutral', sure:false },
+};
+
+function badgeFor(map, v, fallback){
+  const m = map[v];
+  if(!m) return '<span class="badge neutral">' + esc(fallback || v) + '</span>';
+  const inner = m.sure ? esc(m.n) : unv(m.n, v);
+  return '<span class="badge ' + m.b + '">' + inner + '</span>';
+}
+
+/* Kill categories. "Aircraft" is the air-victory total; the air subtypes
+   below sum to it. Everything else is a ground/sea target. */
+const AIR_SUB = new Set(['JetFighter','LightFighter','HeavyFighter','MediumFighter',
+  'HeavyBomber','MediumBomber','LightBomber','HeavyTransport','Transport',
+  'MediumAttackPlane','LightAttackPlane','AttackPlane','Recon']);
+function prettyCat(k){
+  return String(k).replace(/([a-z])([A-Z])/g, '$1 $2');
+}
+
+/* event.type. Derived from which columns each type populates and from the
+   values those columns hold across all five careers. */
+const EVENT = {
+  0 : { ico:'✦', cls:'kill',  grp:'victory' },
+  3 : { ico:'✝', cls:'loss',  grp:'loss'    },
+  4 : { ico:'✚', cls:'loss',  grp:'loss'    },
+  5 : { ico:'✚', cls:'loss',  grp:'loss'    },
+  8 : { ico:'▸', cls:'',      grp:'career'  },
+  9 : { ico:'■', cls:'',      grp:'career'  },
+  12: { ico:'·', cls:'',      grp:'quiet'   },
+  14: { ico:'+', cls:'',      grp:'unit'    },
+  15: { ico:'+', cls:'',      grp:'unit'    },
+  16: { ico:'✚', cls:'',      grp:'unit'    },
+  18: { ico:'⚒', cls:'',      grp:'unit'    },
+  19: { ico:'★', cls:'award', grp:'award'   },
+  20: { ico:'★', cls:'award', grp:'award'   },
+  25: { ico:'▲', cls:'',      grp:'unit'    },
+  26: { ico:'✈', cls:'',      grp:'mission' },
+  31: { ico:'◈', cls:'',      grp:'unit'    },
+  32: { ico:'◈', cls:'',      grp:'unit'    },
+  33: { ico:'▤', cls:'news',  grp:'news'    },
+};
+
+/* Turn one event row into a sentence. Anything without a known shape falls
+   through to a raw dump so nothing is silently hidden. */
+function describeEvent(e, ctx){
+  const who = p => {
+    const pil = ctx.pilotById[p];
+    if(!pil) return 'Pilot #' + p;
+    const nm = esc(pil.name + ' ' + pil.lastName);
+    return pil.isPlayer ? '<b>' + nm + '</b>' : nm;
+  };
+  const planeOf = id => {
+    const pl = ctx.planeById[id];
+    return pl ? esc(planeName(pl.config)) + ' #' + id : 'aircraft #' + id;
+  };
+
+  switch(e.type){
+    case 0: {
+      // tpar1 = victim type; tpar2 = "Enemy Name,unitId,n" for aircraft kills
+      const victim = targetName(e.tpar1) || 'target';
+      const bits = (e.tpar2 || '').split(',');
+      const foe = bits[0] && /[A-Za-z]/.test(bits[0]) ? bits[0] : '';
+      return who(e.pilotId) + ' destroyed <b>' + esc(victim) + '</b>' +
+             (foe ? ' <span style="color:var(--text-faint)">(' + esc(foe) + ')</span>' : '');
+    }
+    case 3: return who(e.pilotId) + ' was <b>killed</b> in action';
+    case 4: return who(e.pilotId) + ' was <b>wounded</b> in action';
+    case 5: return who(e.pilotId) + ' was hit — condition ' + (e.ipar2 >= 0 ? e.ipar2 + '%' : 'unknown');
+    case 8: return 'Career began';
+    case 9: return 'Career ended';
+    case 12: return 'No sorties flown';
+    case 14: return who(e.pilotId) + ' joined the squadron';
+    case 15: return planeOf(e.planeId) + ' delivered to the squadron';
+    case 16: return who(e.pilotId) + ' — condition now ' + (e.ipar2 >= 0 ? e.ipar2 + '%' : 'unknown');
+    case 18: return planeOf(e.planeId) + ' — airframe now ' + (e.ipar2 >= 0 ? e.ipar2 + '%' : 'unknown');
+    case 19:
+    case 20: {
+      const pil = ctx.pilotById[e.pilotId];
+      const aw = awardName(e.ipar2, pil ? pil.country : undefined);
+      return who(e.pilotId) + (e.type === 19 ? ' was recommended for ' : ' was awarded ') +
+             '<b>' + esc(aw) + '</b>';
+    }
+    case 25: return unv('Squadron efficiency changed', '25') + ' — ' + e.ipar1 + ' → ' + e.ipar2;
+    case 26: return 'Mission ' + e.ipar2 + ' flown';
+    case 31: return unv('Sector activity', '31') + ' — ' + missionTypePlain(e.ipar2) + ' (' + e.ipar1 + ')';
+    case 32: return unv('Squadron milestone', '32') + ' — ' + e.ipar1 + ' / ' + e.ipar2 + ' / ' + e.ipar3;
+    case 33: {
+      // tpar1 is prefixed "EB " for front-line "event brief" headlines
+      const head = String(e.tpar1 || '').replace(/^EB\s+/, '');
+      return esc(head) || 'Front-line report';
+    }
+  }
+  const raw = ['ipar1','ipar2','ipar3','ipar4','tpar1','tpar2']
+    .filter(k => e[k] !== null && e[k] !== '' && e[k] !== -1)
+    .map(k => k + '=' + e[k]).join(' ');
+  return unv('Event type ' + e.type, e.type) + (raw ? ' <span class="mono">' + esc(raw) + '</span>' : '');
+}
+
+/* award.type looks country-prefixed — 502002 in PLAAF careers, 601001 in
+   USAF ones — but the pattern does not hold in general: PLAAF careers also
+   carry 503002 and 601980 records, and 601980 shows up on a Chinese pilot
+   the same day he is wounded, so it is clearly not a US decoration.
+   So the air force is only named when the prefix matches the recipient's
+   own country; otherwise the raw ID stands on its own.
+
+   The medal names themselves are unavailable at any price: they live inside
+   Interface.gtp, a ~1.7 GB packed archive the game never unpacks to disk. */
+function awardName(t, pilotCountry){
+  if(t === null || t === undefined || t < 0) return 'an award';
+  const s = String(t);
+  if(s.length >= 6){
+    const prefix = +s.slice(0, 3);
+    if(pilotCountry !== undefined && prefix === pilotCountry && COUNTRY[prefix]){
+      return COUNTRY[prefix].code + ' award ' + s.slice(3);
+    }
+  }
+  return 'award #' + s;
+}
+
+/* ------------------------------ SQL access ------------------------------ */
+
+function q(sql, params){
+  const stmt = App.db.prepare(sql);
+  if(params) stmt.bind(params);
+  const rows = [];
+  while(stmt.step()) rows.push(stmt.getAsObject());
+  stmt.free();
+  return rows;
+}
+function q1(sql, params){
+  const r = q(sql, params);
+  return r.length ? r[0] : null;
+}
+
+/* Every table carries an isDeleted flag; the game soft-deletes rather than
+   removing rows, so all reads must filter on it or the view will show
+   pilots and missions the game itself considers gone. */
+const LIVE = ' AND isDeleted=0 ';
+
+function buildModel(){
+  const career   = q1('SELECT * FROM career WHERE isDeleted=0');
+  if(!career) throw new Error('No career row found — is this an IL-2 career file?');
+  const squadron = q1('SELECT * FROM squadron WHERE isDeleted=0');
+  const pilots   = q('SELECT * FROM pilot WHERE isDeleted=0 ORDER BY slot');
+  const planes   = q('SELECT * FROM plane WHERE isDeleted=0 ORDER BY slot');
+  const missions = q('SELECT * FROM mission WHERE isDeleted=0 ORDER BY missionNum');
+  const sorties  = q('SELECT * FROM sortie WHERE isDeleted=0 ORDER BY date');
+  const events   = q('SELECT * FROM event WHERE isDeleted=0 ORDER BY date, id');
+  const awards   = q('SELECT * FROM award WHERE isDeleted=0 ORDER BY earnedDate');
+  const supply   = q('SELECT * FROM supply WHERE isDeleted=0 ORDER BY scheduled');
+
+  const pilotById = {}; pilots.forEach(p => pilotById[p.id] = p);
+  const planeById = {}; planes.forEach(p => planeById[p.id] = p);
+  const missionById = {}; missions.forEach(m => missionById[m.id] = m);
+  const player = pilots.find(p => p.isPlayer) || null;
+
+  return { career, squadron, pilots, planes, missions, sorties, events, awards,
+           supply, pilotById, planeById, missionById, player };
+}
+
+/* ------------------------------ Renderers ------------------------------ */
+
+const TABS = [
+  { id:'overview', label:'Overview' },
+  { id:'roster',   label:'Roster',    count:d => d.pilots.length },
+  { id:'kills',    label:'Kill Board' },
+  { id:'missions', label:'Missions',  count:d => d.missions.length },
+  { id:'timeline', label:'Timeline',  count:d => d.events.length },
+  { id:'squadron', label:'Squadron' },
+  { id:'raw',      label:'Tables' },
+];
+
+function renderTabs(){
+  $('#tabs').innerHTML = TABS.map(t => {
+    const c = t.count ? '<span class="cnt">' + t.count(App.data) + '</span>' : '';
+    return '<button class="tab' + (App.tab === t.id ? ' active' : '') +
+           '" data-tab="' + t.id + '">' + esc(t.label) + c + '</button>';
+  }).join('');
+  $$('#tabs .tab').forEach(b => b.addEventListener('click', () => {
+    App.tab = b.dataset.tab; renderTabs(); showPanel();
+  }));
+}
+
+function showPanel(){
+  $$('.panel').forEach(p => p.classList.remove('active'));
+  const el = $('#panel-' + App.tab);
+  el.classList.add('active');
+  if(!el.dataset.rendered){
+    ({ overview:renderOverview, roster:renderRoster, kills:renderKills,
+       missions:renderMissions, timeline:renderTimeline, squadron:renderSquadron,
+       raw:renderRaw })[App.tab](el);
+    el.dataset.rendered = '1';
+  }
+}
+
+/* Aggregate a set of "Aircraft=3&JetFighter=2&..." blobs. */
+function sumKills(list){
+  const air = {}, ground = {};
+  let airTotal = 0, groundTotal = 0;
+  for(const s of list){
+    const k = kv(s);
+    for(const [key, val] of Object.entries(k)){
+      const n = parseInt(val, 10); if(!n) continue;
+      if(key === 'Aircraft'){ airTotal += n; continue; }
+      if(AIR_SUB.has(key)) air[key] = (air[key] || 0) + n;
+      else { ground[key] = (ground[key] || 0) + n; groundTotal += n; }
+    }
+  }
+  return { air, ground, airTotal, groundTotal };
+}
+
+function statTile(v, k, cls){
+  return '<div class="stat"><div class="v ' + (cls || '') + '">' + v +
+         '</div><div class="k">' + esc(k) + '</div></div>';
+}
+
+function renderOverview(el){
+  const d = App.data, c = d.career, sq = d.squadron, p = d.player;
+  const ctry = country(p ? p.country : -1);
+  const desc = kv(p ? p.description : '');
+  const kills = sumKills(p ? [p.killStats] : []);
+  const myAwards = d.awards.filter(a => p && a.pilotId === p.id);
+  const received = myAwards.filter(a => !a.isPending).length;
+  const pending  = myAwards.filter(a => a.isPending).length;
+  const days = daysBetween(c.startDate, c.currentDate);
+  const cs = CAREER_STATE[c.state];
+  const myPlane = d.planes.find(pl => pl.slot === (p ? p.slot : -1)) || d.planes[0];
+
+  const lost = d.pilots.filter(x => x.state === 2).length;
+
+  el.innerHTML =
+  '<div class="card">' +
+    '<div class="hero"><div class="hero-main">' +
+      '<div class="hero-name">' + esc(p ? p.name + ' ' + p.lastName : 'Unknown pilot') + '</div>' +
+      '<div class="hero-sub">' +
+        esc(ctry.code) + '<span class="sep">•</span>' +
+        esc(sq ? sq.airfield.replace(/_/g, ' ') : '—') +
+        '<span class="sep">•</span>' + esc(planeName(myPlane ? myPlane.config : '')) +
+        (desc.birthDate ? '<span class="sep">•</span>b. ' + esc(fmtDate(desc.birthDate)) : '') +
+      '</div>' +
+      '<div class="hero-sub" style="margin-top:9px;font-size:13px;">' +
+        'Enlisted ' + esc(fmtDate(c.startDate)) +
+        '<span class="sep">→</span>' + esc(fmtDate(c.currentDate)) +
+        (days !== null ? ' <span style="color:var(--text-faint)">(' + days + ' days)</span>' : '') +
+        '<span class="sep">•</span>' +
+        (cs ? (cs.sure ? esc(cs.n) : unv(cs.n, c.state)) : unv('State ' + c.state, c.state)) +
+        (c.ironMan ? '<span class="sep">•</span><span class="badge warn">Iron Man</span>' : '') +
+      '</div>' +
+    '</div></div>' +
+    '<div class="stats" style="margin-top:16px;">' +
+      statTile(p ? p.sorties : 0, 'Sorties') +
+      statTile(fmtHours(p ? p.flightTime : 0), 'Flight hours') +
+      statTile(kills.airTotal, 'Air victories', 'amber') +
+      statTile(kills.groundTotal, 'Ground kills') +
+      statTile(p ? p.score : 0, 'Score') +
+      statTile(received + (pending ? ' <span style="font-size:12px;color:var(--text-faint)">+' + pending + '</span>' : ''), 'Awards') +
+    '</div>' +
+  '</div>' +
+
+  '<div class="card">' +
+    '<h3>Squadron<span class="note">' + esc(ctry.name) + '</span></h3>' +
+    '<div class="stats">' +
+      statTile(d.pilots.filter(x => x.state === 0).length, 'Pilots active') +
+      statTile(lost, 'Pilots lost', lost ? 'danger' : '') +
+      statTile(d.planes.filter(x => x.state === 0).length + ' / ' + d.planes.length, 'Aircraft ready') +
+      statTile(sq ? sq.sorties : 0, 'Unit sorties') +
+      statTile(fmtHours(sq ? sq.flightTime : 0), 'Unit hours') +
+      statTile(sq ? sq.score : 0, 'Unit score') +
+    '</div>' +
+  '</div>' +
+
+  (p ? '<div class="card"><h3>Player kill breakdown</h3>' + killGrid(kills) + '</div>' : '') +
+
+  '<div class="card">' +
+    '<h3>Decoding notes</h3>' +
+    '<p class="footnote">' +
+      'Values with a dotted underline are best-guess labels — hover to see the raw number ' +
+      'and why it is uncertain. Everything else was confirmed by cross-referencing five ' +
+      'complete career files.' +
+    '</p>' +
+    '<p class="footnote" style="margin-top:9px;">' +
+      'Two things genuinely cannot be resolved from a career file. <b>Medal names</b>: awards ' +
+      'are stored as bare IDs, and while they look country-prefixed (<code>502002</code> in ' +
+      'PLAAF careers), the pattern breaks — PLAAF careers also carry <code>503002</code> and ' +
+      '<code>601980</code> records, so this viewer only names the air force when the prefix ' +
+      'matches the pilot\'s own. <b>Rank names</b>: <code>rankId</code> clearly tracks ' +
+      'seniority, but the strings for both live inside <code>Interface.gtp</code>, a ~1.7 GB ' +
+      'packed archive the game never unpacks to disk.' +
+    '</p>' +
+  '</div>';
+}
+
+function killGrid(kills){
+  const rows = [];
+  for(const [k, v] of Object.entries(kills.air))    rows.push([k, v, 'air']);
+  for(const [k, v] of Object.entries(kills.ground)) rows.push([k, v, 'ground']);
+  rows.sort((a, b) => b[1] - a[1]);
+  if(!rows.length) return '<div class="tbl-empty">No kills recorded.</div>';
+  const max = rows[0][1];
+  return '<div class="killgrid">' + rows.map(([k, v]) =>
+    '<div class="killrow"><div class="top">' +
+      '<span class="nm">' + esc(prettyCat(k)) + '</span>' +
+      '<span class="ct">' + v + '</span>' +
+    '</div><div class="bar"><i style="width:' + Math.round(v / max * 100) + '%"></i></div></div>'
+  ).join('') + '</div>';
+}
+
+/* Generic sortable table. cols: [{k,label,cls,fmt,sortVal}] */
+function dataTable(rows, cols, opts){
+  opts = opts || {};
+  const state = { key: opts.sortKey || cols[0].k, dir: opts.sortDir || 1 };
+  const host = document.createElement('div');
+  host.className = 'tbl-scroll';
+
+  function draw(){
+    const sorted = rows.slice().sort((a, b) => {
+      const col = cols.find(c => c.k === state.key) || cols[0];
+      const va = col.sortVal ? col.sortVal(a) : a[col.k];
+      const vb = col.sortVal ? col.sortVal(b) : b[col.k];
+      if(typeof va === 'number' && typeof vb === 'number') return (va - vb) * state.dir;
+      return String(va == null ? '' : va).localeCompare(String(vb == null ? '' : vb)) * state.dir;
+    });
+    host.innerHTML =
+      '<table class="dt' + (opts.mono ? ' raw' : '') + '"><thead><tr>' +
+        cols.map(c => '<th class="' + (c.cls || '') + ' sortable" data-k="' + c.k + '">' +
+          esc(c.label) + (state.key === c.k ? '<span class="arrow">' + (state.dir > 0 ? '▲' : '▼') + '</span>' : '') +
+        '</th>').join('') +
+      '</tr></thead><tbody>' +
+      (sorted.length ? sorted.map(r =>
+        '<tr class="' + (opts.rowCls ? opts.rowCls(r) : '') + '">' +
+          cols.map(c => '<td class="' + (c.cls || '') + '">' +
+            (c.fmt ? c.fmt(r) : esc(r[c.k])) + '</td>').join('') +
+        '</tr>').join('')
+        : '<tr><td colspan="' + cols.length + '"><div class="tbl-empty">' +
+          esc(opts.empty || 'Nothing to show.') + '</div></td></tr>') +
+      '</tbody></table>';
+    $$('th.sortable', host).forEach(th => th.addEventListener('click', () => {
+      if(state.key === th.dataset.k) state.dir = -state.dir;
+      else { state.key = th.dataset.k; state.dir = th.classList.contains('num') ? -1 : 1; }
+      draw();
+    }));
+  }
+  draw();
+  return host;
+}
+
+function hpBar(h){
+  const v = Math.max(0, Math.min(100, Number(h) || 0));
+  const cls = v >= 70 ? '' : v >= 30 ? 'warn' : 'bad';
+  return '<div class="hp"><div class="track"><div class="fill ' + cls +
+         '" style="width:' + v + '%"></div></div><div class="pct">' + v + '</div></div>';
+}
+
+function renderRoster(el){
+  const d = App.data;
+  const rows = d.pilots.map(p => {
+    const k = sumKills([p.killStats]);
+    return Object.assign({}, p, { _air:k.airTotal, _gnd:k.groundTotal,
+      _name:p.name + ' ' + p.lastName, _offRoster:p.slot >= 1000 });
+  });
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = '<h3>Squadron roster<span class="note">' +
+    d.pilots.filter(p => p.state === 0).length + ' active of ' + d.pilots.length + '</span></h3>';
+  card.appendChild(dataTable(rows, [
+    { k:'slot', label:'Slot', cls:'num', fmt:r => r._offRoster
+        ? '<span style="color:var(--text-faint)">off</span>' : r.slot },
+    { k:'_name', label:'Pilot', cls:'bright', fmt:r =>
+        esc(r._name) + (r.isPlayer ? ' <span class="badge player tiny">You</span>' : '') },
+    { k:'rankId', label:'Rank', cls:'num', fmt:r =>
+        '<span class="unv" title="Rank ID ' + r.rankId + '. Higher is more senior — it ' +
+        'tracks experience across the sample careers — but the rank names live inside ' +
+        'Interface.gtp and cannot be resolved from the career file.">#' + r.rankId + '</span>' },
+    { k:'state', label:'Status', fmt:r => badgeFor(PILOT_STATE, r.state) },
+    { k:'health', label:'Health', cls:'num', fmt:r => hpBar(r.health) },
+    { k:'sorties', label:'Sorties', cls:'num' },
+    { k:'_air', label:'Air', cls:'num', fmt:r => r._air
+        ? '<span style="color:var(--amber-bright);font-weight:700">' + r._air + '</span>' : '—' },
+    { k:'_gnd', label:'Ground', cls:'num', fmt:r => r._gnd || '—' },
+    { k:'score', label:'Score', cls:'num' },
+    { k:'flightTime', label:'Hours', cls:'num', fmt:r => fmtHours(r.flightTime) },
+  ], {
+    sortKey:'slot',
+    rowCls:r => (r.isPlayer ? 'is-player ' : '') + (r._offRoster ? 'dimmed' : ''),
+    empty:'No pilots on the roster.',
+  }));
+  el.appendChild(card);
+
+  const planeCard = document.createElement('div');
+  planeCard.className = 'card';
+  planeCard.innerHTML = '<h3>Aircraft<span class="note">' +
+    d.planes.filter(p => p.state === 0).length + ' serviceable of ' + d.planes.length + '</span></h3>';
+  planeCard.appendChild(dataTable(d.planes, [
+    { k:'slot', label:'Slot', cls:'num' },
+    { k:'config', label:'Type', cls:'bright', fmt:r => esc(planeName(r.config)) },
+    { k:'state', label:'Condition', fmt:r => badgeFor(PLANE_STATE, r.state) },
+    { k:'health', label:'Airframe', cls:'num', fmt:r => hpBar(r.health) },
+    { k:'tcode', label:'Tail code', cls:'mono', fmt:r => esc(dec(r.tcode) || '—') },
+    { k:'skin', label:'Skin', cls:'mono', fmt:r =>
+        esc(String(r.skin || '').split(/[\\/]/).pop() || '—') },
+  ], { sortKey:'slot', empty:'No aircraft on strength.' }));
+  el.appendChild(planeCard);
+}
+
+function renderKills(el){
+  const d = App.data;
+
+  // Per-pilot leaderboard, summed from that pilot's own sorties.
+  const byPilot = d.pilots.map(p => {
+    const k = sumKills(d.sorties.filter(s => s.pilotId === p.id).map(s => s.killStats));
+    return { p, air:k.airTotal, gnd:k.groundTotal,
+             name:p.name + ' ' + p.lastName, isPlayer:p.isPlayer };
+  }).filter(r => r.air || r.gnd);
+
+  const unitCard = document.createElement('div');
+  unitCard.className = 'card';
+  unitCard.innerHTML = '<h3>Squadron totals<span class="note">from squadron record</span></h3>' +
+    killGrid(sumKills([d.squadron ? d.squadron.killStats : '']));
+  el.appendChild(unitCard);
+
+  const lbCard = document.createElement('div');
+  lbCard.className = 'card';
+  lbCard.innerHTML = '<h3>Leaderboard<span class="note">summed from individual sorties</span></h3>';
+  lbCard.appendChild(dataTable(byPilot, [
+    { k:'name', label:'Pilot', cls:'bright', fmt:r =>
+        esc(r.name) + (r.isPlayer ? ' <span class="badge player tiny">You</span>' : '') },
+    { k:'air', label:'Air victories', cls:'num', fmt:r =>
+        '<span style="color:var(--amber-bright);font-weight:700">' + r.air + '</span>' },
+    { k:'gnd', label:'Ground kills', cls:'num' },
+  ], { sortKey:'air', sortDir:-1, rowCls:r => r.isPlayer ? 'is-player' : '',
+       empty:'No kills recorded in any sortie.' }));
+  el.appendChild(lbCard);
+
+  // Victory log — event type 0 carries victim type and the enemy pilot's name.
+  const vics = d.events.filter(e => e.type === 0).reverse();
+  const logCard = document.createElement('div');
+  logCard.className = 'card';
+  logCard.innerHTML = '<h3>Victory log<span class="note">' + vics.length + ' claims</span></h3>';
+  logCard.appendChild(dataTable(vics.map(e => {
+    const pil = d.pilotById[e.pilotId];
+    const bits = String(e.tpar2 || '').split(',');
+    return {
+      date:e.date, sortKey:e.date,
+      pilot:pil ? pil.name + ' ' + pil.lastName : 'Pilot #' + e.pilotId,
+      isPlayer:pil ? !!pil.isPlayer : false,
+      victim:targetName(e.tpar1),
+      foe:(bits[0] && /[A-Za-z]/.test(bits[0])) ? bits[0] : '',
+      unit:bits[1] || '',
+    };
+  }), [
+    { k:'date', label:'Date', fmt:r => esc(fmtDate(r.date)) +
+        ' <span style="color:var(--text-faint)">' + esc(fmtTime(r.date)) + '</span>' },
+    { k:'pilot', label:'Claimed by', cls:'bright', fmt:r =>
+        esc(r.pilot) + (r.isPlayer ? ' <span class="badge player tiny">You</span>' : '') },
+    { k:'victim', label:'Target', fmt:r => '<b style="color:var(--text-bright)">' + esc(r.victim) + '</b>' },
+    { k:'foe', label:'Enemy crew', fmt:r => r.foe
+        ? esc(r.foe) + (r.unit ? ' <span class="mono" style="color:var(--text-faint)">' + esc(r.unit) + '</span>' : '')
+        : '<span style="color:var(--text-faint)">—</span>' },
+  ], { sortKey:'date', sortDir:-1, empty:'No victories claimed.' }));
+  el.appendChild(logCard);
+}
+
+function renderMissions(el){
+  const d = App.data;
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = '<h3>Mission log<span class="note">' + d.missions.length + ' missions</span></h3>';
+
+  const rows = d.missions.slice().reverse().map(m => {
+    const ms = d.sorties.filter(s => s.missionId === m.id);
+    const mine = ms.find(s => { const p = d.pilotById[s.pilotId]; return p && p.isPlayer; });
+    const k = sumKills(ms.map(s => s.killStats));
+    return { m, mine, kills:k.airTotal + k.groundTotal, flew:!!mine,
+             num:m.missionNum, date:m.date, type:m.type, state:m.state,
+             pilots:m.pilotsCount, dur:mine ? mine.flightTime : m.estDuration };
+  });
+
+  const tbl = dataTable(rows, [
+    { k:'num', label:'#', cls:'num' },
+    { k:'date', label:'Date', fmt:r => esc(fmtDate(r.date)) },
+    { k:'type', label:'Type', cls:'bright', fmt:r => missionType(r.type) },
+    { k:'state', label:'Result', fmt:r => badgeFor(MISSION_STATE, r.state) },
+    { k:'flew', label:'You', fmt:r => r.flew
+        ? badgeFor(SORTIE_STATUS, r.mine.status)
+        : '<span style="color:var(--text-faint)">did not fly</span>',
+      sortVal:r => r.flew ? 1 : 0 },
+    { k:'pilots', label:'Flight', cls:'num', fmt:r => r.pilots || '—' },
+    { k:'kills', label:'Kills', cls:'num', fmt:r => r.kills || '—' },
+    { k:'dur', label:'Duration', cls:'num', fmt:r => fmtDur(r.dur) },
+    { k:'_b', label:'', fmt:r => r.m.briefing
+        ? '<button class="expander" data-mid="' + r.m.id + '">brief</button>' : '' },
+  ], { sortKey:'num', sortDir:-1, empty:'No missions flown yet.' });
+
+  card.appendChild(tbl);
+  el.appendChild(card);
+
+  card.addEventListener('click', ev => {
+    const btn = ev.target.closest('.expander'); if(!btn) return;
+    const tr = btn.closest('tr');
+    const nxt = tr.nextElementSibling;
+    if(nxt && nxt.classList.contains('brief-row')){ nxt.remove(); btn.textContent = 'brief'; return; }
+    const m = d.missionById[+btn.dataset.mid];
+    const row = document.createElement('tr');
+    row.className = 'brief-row';
+    row.innerHTML = '<td colspan="9"><div class="mdet"><div class="brief">' +
+      sanitizeBriefing(m.briefing) + '</div>' + missionResultLine(m) + '</div></td>';
+    tr.after(row);
+    btn.textContent = 'hide';
+  });
+}
+
+/* Briefings are game-authored HTML. Only the handful of tags the game
+   actually uses are kept; everything else is stripped rather than trusted. */
+function sanitizeBriefing(html){
+  if(!html) return '<span style="color:var(--text-faint)">No briefing recorded.</span>';
+  return String(html)
+    .replace(/<(?!\/?(?:h1|h2|b|i|br)\b)[^>]*>/gi, '')
+    .replace(/<(h1|h2|b|i)([^>]*)>/gi, '<$1>');
+}
+
+function missionResultLine(m){
+  const r = kv(m.result);
+  if(!r.STATUS && !r.missionDuration) return '';
+  const objs = String(r.objectives || '');
+  const parts = objs.split('|').slice(1);
+  let done = 0, total = 0;
+  for(const p of parts){
+    const f = p.split(',');
+    if(f.length >= 3){ total++; if(f[2] === '1') done++; }
+  }
+  return '<div class="footnote" style="margin-top:8px;">' +
+    (total ? 'Objectives met: <b>' + done + ' / ' + total + '</b> · ' : '') +
+    (r.missionDuration ? 'Mission length ' + fmtDur(+r.missionDuration) : '') +
+    '</div>';
+}
+
+const TL_FILTERS = [
+  { id:'all',     label:'Everything' },
+  { id:'victory', label:'Victories'  },
+  { id:'loss',    label:'Losses'     },
+  { id:'award',   label:'Awards'     },
+  { id:'mission', label:'Missions'   },
+  { id:'news',    label:'Front line' },
+];
+
+function renderTimeline(el){
+  const d = App.data;
+  let filter = 'all', limit = 250, playerOnly = false;
+
+  const card = document.createElement('div');
+  card.className = 'card';
+  el.appendChild(card);
+
+  function draw(){
+    let evs = d.events.slice().reverse();
+    if(filter !== 'all') evs = evs.filter(e => (EVENT[e.type] || {}).grp === filter);
+    else evs = evs.filter(e => (EVENT[e.type] || {}).grp !== 'quiet');
+    if(playerOnly && d.player) evs = evs.filter(e => e.pilotId === d.player.id);
+    const total = evs.length;
+    const shown = evs.slice(0, limit);
+
+    let html = '<h3>Career timeline<span class="note">' + total + ' entries</span></h3>' +
+      '<div class="filterbar">' +
+        TL_FILTERS.map(f => '<button class="chip' + (filter === f.id ? ' on' : '') +
+          '" data-f="' + f.id + '">' + esc(f.label) + '</button>').join('') +
+        '<span class="spacer"></span>' +
+        (d.player ? '<button class="chip' + (playerOnly ? ' on' : '') +
+          '" data-player="1">You only</button>' : '') +
+      '</div><div class="tl">';
+
+    let lastDay = '';
+    for(const e of shown){
+      const p = parseDate(e.date);
+      const dayKey = p ? p.key : '';
+      if(dayKey !== lastDay){
+        html += '<div class="tl-date">' + esc(fmtDate(e.date)) + '</div>';
+        lastDay = dayKey;
+      }
+      const meta = EVENT[e.type] || { ico:'·', cls:'' };
+      html += '<div class="tl-ev ' + meta.cls + '">' +
+                '<span class="ico">' + meta.ico + '</span>' +
+                '<span class="txt">' + describeEvent(e, d) + '</span>' +
+                '<span class="tm">' + esc(fmtTime(e.date)) + '</span>' +
+              '</div>';
+    }
+    html += '</div>';
+    if(total > shown.length){
+      html += '<div style="text-align:center;margin-top:14px;">' +
+        '<button class="tb-btn" data-more="1">Show more (' +
+        (total - shown.length) + ' older)</button></div>';
+    }
+    if(!total) html += '<div class="tbl-empty">Nothing matches this filter.</div>';
+    card.innerHTML = html;
+
+    $$('.chip[data-f]', card).forEach(b => b.addEventListener('click', () => {
+      filter = b.dataset.f; limit = 250; draw();
+    }));
+    const po = $('.chip[data-player]', card);
+    if(po) po.addEventListener('click', () => { playerOnly = !playerOnly; limit = 250; draw(); });
+    const more = $('[data-more]', card);
+    if(more) more.addEventListener('click', () => { limit += 500; draw(); });
+  }
+  draw();
+}
+
+const SUPPLY_TYPE = { 1:'Fuel', 2:'Ammunition', 3:'Spare parts', 4:'Aircraft', 5:'Pilots' };
+const SUPPLY_STATUS = {
+  0:{ n:'Requested', b:'warn',    sure:false },
+  1:{ n:'En route',  b:'warn',    sure:false },
+  3:{ n:'Delivered', b:'ok',      sure:false },
+};
+
+function renderSquadron(el){
+  const d = App.data, sq = d.squadron;
+  if(!sq){ el.innerHTML = '<div class="card"><div class="tbl-empty">No squadron record.</div></div>'; return; }
+
+  const stock = document.createElement('div');
+  stock.className = 'card';
+  const meters = [
+    ['Fuel', sq.fuelQty, 1000000],
+    ['Ammunition', sq.ammoQty, 10000],
+    ['Spare parts', sq.partsQty, 500],
+    ['Request points', sq.requestPoints, 100],
+    ['Award points', sq.awardPoints, 100],
+  ];
+  stock.innerHTML = '<h3>Supply &amp; standing<span class="note">airfield ' +
+    esc(sq.airfield.replace(/_/g, ' ')) + '</span></h3><div class="meters">' +
+    meters.map(([n, v, max]) =>
+      '<div class="meter"><div class="top"><span class="n">' + esc(n) +
+      '</span><span class="v">' + (Number(v) || 0).toLocaleString() + '</span></div>' +
+      '<div class="track"><i style="width:' +
+      Math.min(100, Math.round((Number(v) || 0) / max * 100)) + '%"></i></div></div>'
+    ).join('') + '</div>' +
+    '<p class="footnote" style="margin-top:12px;">Bars are scaled against nominal ' +
+    'full-stock figures for readability; the game does not record a maximum. ' +
+    'Efficiency is <b>' + esc(sq.efficiency) + '</b>' + '.</p>';
+  el.appendChild(stock);
+
+  const sup = document.createElement('div');
+  sup.className = 'card';
+  sup.innerHTML = '<h3>Supply convoys<span class="note">' + d.supply.length + ' orders</span></h3>';
+  sup.appendChild(dataTable(d.supply.slice().reverse(), [
+    { k:'supplyNum', label:'#', cls:'num' },
+    { k:'scheduled', label:'Scheduled', fmt:r => esc(fmtDate(r.scheduled)) },
+    { k:'type', label:'Cargo', cls:'bright', fmt:r =>
+        SUPPLY_TYPE[r.type] ? esc(SUPPLY_TYPE[r.type]) : unv('Type ' + r.type, r.type) },
+    { k:'quantity', label:'Qty', cls:'num', fmt:r => (Number(r.quantity) || 0).toLocaleString() },
+    { k:'cost', label:'Cost', cls:'num' },
+    { k:'status', label:'Status', fmt:r => badgeFor(SUPPLY_STATUS, r.status) },
+  ], { sortKey:'supplyNum', sortDir:-1, empty:'No supply orders.' }));
+  el.appendChild(sup);
+
+  const aw = document.createElement('div');
+  aw.className = 'card';
+  aw.innerHTML = '<h3>Decorations<span class="note">' + d.awards.length + ' records</span></h3>';
+  aw.appendChild(dataTable(d.awards.slice().reverse().map(a => {
+    const p = d.pilotById[a.pilotId];
+    return Object.assign({}, a, {
+      _pilot: p ? p.name + ' ' + p.lastName : 'Pilot #' + a.pilotId,
+      _isPlayer: p ? !!p.isPlayer : false,
+    });
+  }), [
+    { k:'earnedDate', label:'Earned', fmt:r => esc(fmtDate(r.earnedDate)) },
+    { k:'_pilot', label:'Pilot', cls:'bright', fmt:r =>
+        esc(r._pilot) + (r._isPlayer ? ' <span class="badge player tiny">You</span>' : '') },
+    { k:'type', label:'Award', fmt:r => esc(awardName(r.type,
+        d.pilotById[r.pilotId] ? d.pilotById[r.pilotId].country : undefined)) },
+    { k:'isPending', label:'Status', fmt:r => r.isPending
+        ? '<span class="badge warn">Pending</span>'
+        : '<span class="badge ok">Received ' + esc(fmtDate(r.receivedDate)) + '</span>' },
+  ], { sortKey:'earnedDate', sortDir:-1, rowCls:r => r._isPlayer ? 'is-player' : '',
+       empty:'No decorations recorded.' }));
+  el.appendChild(aw);
+}
+
+/* Raw table browser — the escape hatch for anything the decoded views
+   don't cover, and the fastest way to check a value before trusting it. */
+function renderRaw(el){
+  const tables = q("SELECT name FROM sqlite_master WHERE type='table' " +
+                   "AND name NOT LIKE 'sqlite_%' ORDER BY name").map(r => r.name);
+  let current = tables.includes('career') ? 'career' : tables[0];
+  let showDeleted = false;
+
+  const card = document.createElement('div');
+  card.className = 'card';
+  el.appendChild(card);
+
+  function draw(){
+    const counts = {};
+    tables.forEach(t => counts[t] = q1('SELECT COUNT(*) n FROM "' + t + '"').n);
+    const cols = q('PRAGMA table_info("' + current + '")').map(c => c.name);
+    const hasDel = cols.includes('isDeleted');
+    const where = (hasDel && !showDeleted) ? ' WHERE isDeleted=0' : '';
+    const rows = q('SELECT * FROM "' + current + '"' + where + ' LIMIT 500');
+
+    card.innerHTML = '<h3>Raw tables<span class="note">read-only</span></h3>' +
+      '<div class="rawnav">' + tables.map(t =>
+        '<button class="' + (t === current ? 'on' : '') + '" data-t="' + esc(t) + '">' +
+        esc(t) + '<span class="n">' + counts[t] + '</span></button>').join('') + '</div>' +
+      (hasDel ? '<div class="filterbar"><button class="chip' + (showDeleted ? ' on' : '') +
+        '" data-del="1">Include soft-deleted rows</button></div>' : '');
+
+    card.appendChild(dataTable(rows, cols.map(c => ({
+      k:c, label:c, cls:'mono',
+      fmt:r => { const v = r[c];
+        if(v === null) return '<span style="color:var(--text-faint)">null</span>';
+        const s = String(v);
+        return esc(s.length > 220 ? s.slice(0, 220) + '…' : s); },
+    })), { sortKey:cols[0], mono:true,
+           empty:'Table is empty.' }));
+
+    if(rows.length === 500){
+      const n = document.createElement('p');
+      n.className = 'footnote';
+      n.textContent = 'Showing the first 500 rows.';
+      card.appendChild(n);
+    }
+    $$('.rawnav button', card).forEach(b => b.addEventListener('click', () => {
+      current = b.dataset.t; draw();
+    }));
+    const dl = $('.chip[data-del]', card);
+    if(dl) dl.addEventListener('click', () => { showDeleted = !showDeleted; draw(); });
+  }
+  draw();
+}
+
+/* ------------------------------ File I/O ------------------------------ */
+
+const PATH_HINTS = [
+  'C:\\Program Files (x86)\\Steam\\steamapps\\common\\IL2Series\\data\\Career',
+  'D:\\Steam\\steamapps\\common\\IL2Series\\data\\Career',
+  'C:\\Program Files\\IL-2 Sturmovik Korea\\data\\Career',
+];
+function renderPathHints(){
+  $('#pathHints').innerHTML = PATH_HINTS.map(p =>
+    '<div class="path-hint"><span>' + esc(p) + '</span>' +
+    '<button data-copy="' + esc(p) + '">Copy</button></div>').join('');
+  $$('#pathHints button').forEach(b => b.addEventListener('click', () => {
+    navigator.clipboard.writeText(b.dataset.copy).then(
+      () => toast('Path copied.'), () => toast('Could not copy.', true));
+  }));
+}
+
+async function openViaFsApi(){
+  const opts = {
+    types:[{ description:'IL-2 career file', accept:{ 'application/vnd.sqlite3':['.db'] } }],
+    excludeAcceptAllOption:false,
+  };
+  if(App.handle) opts.startIn = App.handle;
+  let handle;
+  try{
+    [handle] = await window.showOpenFilePicker(opts);
+  }catch(err){
+    if(err && err.name === 'AbortError') return;
+    if(App.handle){
+      try{ delete opts.startIn; [handle] = await window.showOpenFilePicker(opts); }
+      catch(err2){
+        if(err2 && err2.name === 'AbortError') return;
+        return fallbackAfterFsApiError(err2);
+      }
+    } else return fallbackAfterFsApiError(err);
+  }
+  try{
+    const file = await handle.getFile();
+    loadBytes(new Uint8Array(await file.arrayBuffer()), file.name, handle);
+  }catch(err){
+    console.error(err); toast('Could not read that file.', true);
+  }
+}
+
+function fallbackAfterFsApiError(err){
+  console.warn('File System Access API unavailable, falling back to file input:', err);
+  App.fsApi = false;
+  openViaFallback();
+}
+
+function openViaFallback(){
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.db';
+  input.addEventListener('change', async () => {
+    const file = input.files[0]; if(!file) return;
+    loadBytes(new Uint8Array(await file.arrayBuffer()), file.name, null);
+  });
+  input.click();
+}
+
+function openFile(){
+  if(!App.SQL){ toast('SQLite engine is still starting — try again in a moment.', true); return; }
+  if(App.fsApi) openViaFsApi(); else openViaFallback();
+}
+
+function loadBytes(bytes, name, handle){
+  // Cheap sanity check before handing 600 KB of anything to the engine.
+  const magic = String.fromCharCode.apply(null, bytes.subarray(0, 15));
+  if(magic !== 'SQLite format 3'){
+    toast('That file is not a SQLite database, so it is not an IL-2 career file.', true);
+    return;
+  }
+  try{
+    if(App.db) App.db.close();
+    App.db = new App.SQL.Database(bytes);
+    App.data = buildModel();
+    App.fileName = name;
+    App.handle = handle;
+  }catch(err){
+    console.error(err);
+    toast('Could not read that career file: ' + err.message, true);
+    return;
+  }
+  $('#emptyState').style.display = 'none';
+  $('#careerView').style.display = '';
+  $('#btnReload').disabled = !handle;
+  $('#btnClose').disabled = false;
+  $$('.panel').forEach(p => { p.dataset.rendered = ''; p.innerHTML = ''; });
+  App.tab = 'overview';
+  renderTabs(); showPanel();
+  updateStatus();
+  document.title = App.data.player
+    ? App.data.player.name + ' ' + App.data.player.lastName + ' — Career Viewer'
+    : 'IL-2 Korea — Career File Viewer';
+}
+
+function closeFile(){
+  if(App.db){ App.db.close(); App.db = null; }
+  App.data = null; App.handle = null; App.fileName = '';
+  $('#careerView').style.display = 'none';
+  $('#emptyState').style.display = '';
+  $('#btnReload').disabled = true;
+  $('#btnClose').disabled = true;
+  document.title = 'IL-2 Korea — Career File Viewer';
+  updateStatus();
+}
+
+async function reloadFile(){
+  if(!App.handle) return;
+  try{
+    const file = await App.handle.getFile();
+    loadBytes(new Uint8Array(await file.arrayBuffer()), file.name, App.handle);
+    toast('Reloaded from disk.');
+  }catch(err){
+    console.error(err); toast('Could not re-read the file.', true);
+  }
+}
+
+function updateStatus(){
+  const s = $('#tbStatus');
+  if(!App.SQL){ s.innerHTML = 'Starting SQLite engine <span class="spinner"></span>'; return; }
+  if(!App.db){
+    s.innerHTML = '<b>Read-only</b> — this viewer never writes to your career file.';
+    return;
+  }
+  s.innerHTML = '<b>' + esc(App.fileName) + '</b><br>' +
+    'Read-only — nothing is written back to disk.';
+}
+
+/* ------------------------------ Boot ------------------------------ */
+
+/* sql.js needs its 637 KB .wasm alongside this page. Fetching a sibling
+   file works over http(s) — a local server, or GitHub Pages — but browsers
+   block it on file:// URLs. So: try the fetch, and if the page was opened
+   straight off disk, ask for the .wasm once and keep it in IndexedDB so it
+   only ever has to be located a single time. */
+const IDB_NAME = 'il2-career-viewer', IDB_STORE = 'assets', IDB_KEY = 'sql-wasm';
+
+function idb(mode, fn){
+  return new Promise((resolve, reject) => {
+    const rq = indexedDB.open(IDB_NAME, 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore(IDB_STORE);
+    rq.onerror = () => reject(rq.error);
+    rq.onsuccess = () => {
+      const db = rq.result;
+      const tx = db.transaction(IDB_STORE, mode);
+      const req = fn(tx.objectStore(IDB_STORE));
+      req.onsuccess = () => { resolve(req.result); db.close(); };
+      req.onerror = () => { reject(req.error); db.close(); };
+    };
+  });
+}
+const cacheGet = () => idb('readonly',  st => st.get(IDB_KEY)).catch(() => null);
+const cacheSet = b  => idb('readwrite', st => st.put(b, IDB_KEY)).catch(() => null);
+
+async function boot(){
+  renderPathHints();
+
+  let wasmBinary = await cacheGet();
+  if(!wasmBinary){
+    try{
+      const res = await fetch('sql-wasm.wasm');
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      wasmBinary = await res.arrayBuffer();
+      cacheSet(wasmBinary);
+    }catch(err){
+      console.warn('Could not fetch sql-wasm.wasm alongside the page:', err);
+      return promptForWasm();
+    }
+  }
+  await startEngine(wasmBinary);
+}
+
+async function startEngine(wasmBinary){
+  try{
+    App.SQL = await initSqlJs({ wasmBinary });
+    updateStatus();
+  }catch(err){
+    console.error(err);
+    $('#tbStatus').innerHTML = '<span style="color:var(--danger)">SQLite engine failed to start.</span>';
+    toast('The SQLite engine could not start: ' + err.message, true);
+  }
+}
+
+/* file:// fallback — one-time manual location of the .wasm. */
+function promptForWasm(){
+  $('#tbStatus').innerHTML = '<span style="color:var(--warn)">Engine file not found</span>';
+  const es = $('.empty-state');
+  const box = document.createElement('div');
+  box.style.cssText = 'border-top:1px solid var(--border);margin-top:22px;padding-top:18px;';
+  box.innerHTML =
+    '<h2 style="font-size:15px;">One-time setup</h2>' +
+    '<p>This page was opened directly from disk, and browsers will not let a ' +
+    '<code>file://</code> page load its own WebAssembly engine. Two ways round it — ' +
+    'either point at the engine file once (it is remembered afterwards), or serve ' +
+    'the folder over http.</p>' +
+    '<button class="tb-btn primary" id="btnPickWasm">Locate sql-wasm.wasm…</button>' +
+    '<p class="footnote" style="margin-top:14px;">' +
+    'It sits next to this page. To serve over http instead, run ' +
+    '<code>python -m http.server</code> in this folder and open ' +
+    '<code>http://localhost:8000/career.html</code>.</p>';
+  es.appendChild(box);
+  $('#btnPickWasm').addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = '.wasm';
+    input.addEventListener('change', async () => {
+      const f = input.files[0]; if(!f) return;
+      const buf = await f.arrayBuffer();
+      const sig = new Uint8Array(buf.slice(0, 4));
+      if(!(sig[0] === 0x00 && sig[1] === 0x61 && sig[2] === 0x73 && sig[3] === 0x6d)){
+        toast('That is not a WebAssembly file.', true); return;
+      }
+      cacheSet(buf);
+      box.remove();
+      await startEngine(buf);
+      if(App.SQL) toast('Engine ready — remembered for next time.');
+    });
+    input.click();
+  });
+}
+
+$('#btnOpen').addEventListener('click', openFile);
+$('#btnEmptyOpen').addEventListener('click', openFile);
+$('#btnReload').addEventListener('click', reloadFile);
+$('#btnClose').addEventListener('click', closeFile);
+
+boot();
+
+</script>
+</body>
+</html>

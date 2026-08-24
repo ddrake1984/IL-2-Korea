@@ -1,0 +1,9 @@
+# Career files are personal save data, not part of the tool. They are handy to
+# drop in this folder while testing career.html — this makes sure one never
+# gets committed by accident.
+*.db
+*.db-wal
+*.db-shm
+
+# The game's own career backups
+Backup_*.zip

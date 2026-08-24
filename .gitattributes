@@ -1,2 +1,7 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# The sql.js WebAssembly engine must never be line-ending normalized.
+# Git's own binary detection would almost certainly catch it, but a
+# corrupted .wasm fails at runtime with an unhelpful error, so be explicit.
+*.wasm binary
