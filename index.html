@@ -394,6 +394,42 @@ async function il2Permission(handle, mode){
   catch(err){ return 'denied'; }
 }
 
+const IL2_CFG_KEY = 'graphicsStartupCfg';
+
+async function il2PutKey(key, handle){
+  const db = await il2db();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IL2_STORE, 'readwrite');
+    tx.objectStore(IL2_STORE).put(handle, key);
+    tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+  });
+}
+
+// Resolve startup.cfg here, at the moment the folder is chosen. This runs
+// inside the picker's own gesture with permission freshly granted, which is
+// the best chance any of these tools get — far better than a page loaded
+// later trying to reach the same file from a stored handle. The Graphics
+// Configurator then only needs the file, not the folder.
+async function il2RememberStartupCfg(dir){
+  const find = async (d) => {
+    try{ const h = await d.getFileHandle('startup.cfg'); if(h) return h; }catch(err){}
+    try{
+      for await (const [name, entry] of d.entries()){
+        if(entry.kind === 'file' && name.toLowerCase() === 'startup.cfg') return entry;
+      }
+    }catch(err){}
+    return null;
+  };
+  try{
+    let handle = await find(dir);
+    if(!handle){
+      try{ handle = await find(await dir.getDirectoryHandle('data')); }catch(err){}
+    }
+    if(handle) await il2PutKey(IL2_CFG_KEY, handle);
+    return !!handle;
+  }catch(err){ return false; }
+}
+
 // Accept either the data folder or the install root, and say so plainly when
 // it is neither rather than storing something the tools can't use.
 async function il2NormaliseDataDir(handle){
@@ -481,13 +517,24 @@ $('#fbChoose').addEventListener('click', async () => {
     return;
   }
   await il2Put(data);
+  const gotCfg = await il2RememberStartupCfg(data);
   renderFolderBar();
+  if(!gotCfg){
+    // Not fatal — the Graphics Configurator can still be pointed at the file
+    // by hand — but worth saying, since every other tool will now just work.
+    const sub = $('#fbSub');
+    sub.innerHTML += ' <b style="color:var(--amber)">No startup.cfg was found in it, ' +
+      'so the Graphics Configurator will ask for that file once.</b>';
+  }
 });
 
 $('#fbAllow').addEventListener('click', async () => {
   const handle = await il2Get();
   if(!handle) return renderFolderBar();
   try{ await handle.requestPermission({ mode:'readwrite' }); }catch(err){ console.error(err); }
+  // Reconnecting is another fresh gesture, so take the chance to pick up
+  // startup.cfg if it was never resolved — or if the folder has changed.
+  await il2RememberStartupCfg(handle);
   renderFolderBar();
 });
 
