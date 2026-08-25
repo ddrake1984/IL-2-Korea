@@ -1526,21 +1526,37 @@ async function il2Connect(container, onReady){
 // there is nothing left to ask: open it.
 il2Connect($('#pathHints'), async (dir) => {
   if(App.installs.length) return;               // something is already open
-  // Accept the data folder or the install root above it, and say which name it
-  // looked for when neither has one — "nothing happened" is not a diagnosis.
-  let handle, file, text, looked = [];
-  for(const path of [[], ['data']]){
-    try{
-      let d = dir;
-      for(const seg of path) d = await d.getDirectoryHandle(seg);
-      handle = await d.getFileHandle('startup.cfg');
-      break;
-    }catch(err){ looked.push((path.length ? path.join('\\') + '\\' : '') + 'startup.cfg'); }
-  }
-  if(!handle) throw new Error('no startup.cfg found (looked for ' + looked.join(' and ') + ')');
 
-  file = await handle.getFile();
-  text = await file.text();
+  // Look the file up by listing the folder rather than asking for it by name.
+  // getFileHandle matches exactly, and Windows filenames do not, so a folder
+  // holding Startup.cfg answers "not found" to a request for startup.cfg.
+  const findFile = async (d, wanted) => {
+    const want = wanted.toLowerCase();
+    for await (const [name, h] of d.entries()){
+      if(h.kind === 'file' && name.toLowerCase() === want) return h;
+    }
+    return null;
+  };
+
+  let handle = await findFile(dir, 'startup.cfg');
+  if(!handle){                                  // maybe they picked the install root
+    try{ handle = await findFile(await dir.getDirectoryHandle('data'), 'startup.cfg'); }
+    catch(err){ /* no data folder inside — fall through to the report below */ }
+  }
+  if(!handle){
+    // Say what the page can actually see, so the next step is obvious rather
+    // than another round of guessing.
+    const seen = [];
+    for await (const [name, h] of dir.entries()){
+      if(h.kind === 'file') seen.push(name);
+      if(seen.length >= 10) break;
+    }
+    throw new Error('no startup.cfg in "' + dir.name + '". Files it can see: ' +
+                    (seen.join(', ') || '(none)'));
+  }
+
+  const file = await handle.getFile();
+  const text = await file.text();
 
   // Same route as opening it by hand — there is no naming step in either now.
   App.lastHandle = handle;
