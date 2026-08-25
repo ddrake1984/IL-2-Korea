@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IL-2 Korea — Cooperative Converter</title>
+<meta name="description" content="Offline browser tool that turns an IL-2 Sturmovik: Korea generated mission into a cooperative multiplayer mission, briefing text included.">
+<style>
+:root{
+  --bg:#26221f;
+  --bg-panel:#2c2823;
+  --bg-toolbar:#1e1b18;
+  --border:rgba(255,255,255,.09);
+  --row-bg:#332e27;
+  --row-bg-hover:#3f382d;
+  --text-bright:#efe8da;
+  --text:#c7bfae;
+  --text-dim:#8a8377;
+  --text-faint:#5f594e;
+  --amber:#d9a44b;
+  --amber-bright:#f0bd63;
+  --warn:#e2a23a;
+  --danger:#c85c4a;
+  --good:#7fae6d;
+  --accent:#c98b34;
+  font-size:16.5px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:"Bahnschrift","Segoe UI Semibold","Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+body{background:radial-gradient(ellipse at 50% -10%, #34302a 0%, transparent 60%),var(--bg);min-height:100vh;padding-bottom:90px;}
+h1,h2,h3{font-weight:700;margin:0;}
+button{font-family:inherit;cursor:pointer;}
+::selection{background:var(--amber);color:#221c12;}
+code{font-family:Consolas,Menlo,monospace;font-size:.92em;color:var(--text-bright);}
+
+.toolbar{
+  background:var(--bg-toolbar);border-bottom:1px solid var(--border);
+  padding:10px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  position:sticky;top:0;z-index:40;box-shadow:0 4px 14px rgba(0,0,0,.35);
+}
+.app-brand{display:flex;align-items:center;gap:10px;margin-right:8px;text-decoration:none;color:inherit;border-radius:4px;padding:2px 6px;margin-left:-6px;}
+.app-brand:hover{background:rgba(255,255,255,.05);}
+.app-brand:hover .app-brand-text b{color:var(--amber-bright);}
+.app-brand .plane{font-size:20px;filter:saturate(0) brightness(1.6) sepia(1) hue-rotate(-10deg) saturate(3);}
+.app-brand-text{display:flex;flex-direction:column;line-height:1.1;}
+.app-brand-text b{color:var(--text-bright);font-size:14px;letter-spacing:.5px;}
+.app-brand-text span{color:var(--text-faint);font-size:11px;}
+.tb-sep{width:1px;align-self:stretch;background:var(--border);margin:0 4px;}
+.tb-btn{
+  background:#33302a;border:1px solid var(--border);color:var(--text-bright);
+  padding:7px 13px;border-radius:4px;font-size:13.5px;font-weight:600;
+  display:flex;align-items:center;gap:6px;letter-spacing:.3px;
+}
+.tb-btn:hover{background:#3c3931;border-color:rgba(255,255,255,.2);}
+.tb-btn:active{transform:translateY(1px);}
+.tb-btn.primary{background:linear-gradient(#c9902f,#a9761f);border-color:#8a611a;color:#231a0c;}
+.tb-btn.primary:hover{background:linear-gradient(#d69c39,#b58026);}
+.tb-btn.primary:disabled{background:#4a463d;color:var(--text-faint);border-color:var(--border);cursor:not-allowed;}
+.tb-btn:disabled{opacity:.45;cursor:not-allowed;}
+.tb-status{font-size:11.5px;color:var(--text-faint);margin-left:auto;text-align:right;max-width:44ch;}
+.tb-status b{color:var(--text);}
+
+.wrap{max-width:1080px;margin:0 auto;padding:28px 24px 0;}
+.page-title{display:flex;align-items:baseline;gap:12px;margin-bottom:22px;flex-wrap:wrap;}
+.page-title h1{font-size:28px;letter-spacing:2px;color:var(--text-bright);text-transform:uppercase;}
+.page-title .sub{font-size:13px;color:var(--text-faint);font-weight:400;}
+
+.empty-state{border:1px dashed var(--border);border-radius:8px;padding:40px 32px;text-align:center;color:var(--text-dim);background:rgba(0,0,0,.15);}
+.empty-state h2{color:var(--text-bright);font-size:18px;margin-bottom:10px;}
+.empty-state p{font-size:14px;line-height:1.6;max-width:640px;margin:0 auto 14px;}
+.path-hints{display:flex;flex-direction:column;gap:6px;margin:14px auto 18px;max-width:640px;text-align:left;}
+.path-hint{background:#1f1c18;border:1px solid var(--border);border-radius:4px;padding:7px 11px;font-size:11.5px;color:var(--text);font-family:Consolas,Menlo,monospace;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.path-hint span{overflow-wrap:anywhere;}
+.path-hint button{background:none;border:none;color:var(--amber);font-size:11px;font-weight:700;flex-shrink:0;}
+
+.group{margin-bottom:26px;}
+.group > h3{
+  font-size:14.5px;text-transform:uppercase;letter-spacing:2px;color:var(--text-bright);
+  padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:10px;display:flex;align-items:center;gap:10px;
+}
+.group > h3 .hint{font-size:11px;letter-spacing:.3px;text-transform:none;color:var(--text-faint);font-weight:400;margin-left:auto;}
+
+.identity{margin-bottom:9px;}
+.idt-hit{font-size:15px;color:var(--text);background:rgba(217,164,75,.1);border-left:3px solid var(--amber);border-radius:0 5px 5px 0;padding:10px 15px;}
+.idt-hit b{color:var(--amber-bright);font-size:16.5px;}
+.idt-why{display:block;font-size:11.5px;color:var(--text-faint);margin-top:3px;letter-spacing:.2px;}
+.idt-miss{font-size:13px;color:var(--text-dim);background:rgba(226,162,58,.08);border-left:3px solid var(--warn);border-radius:0 5px 5px 0;padding:10px 15px;}
+.idt-bad{font-size:13.5px;color:var(--text);background:rgba(200,92,74,.1);border-left:3px solid var(--danger);border-radius:0 5px 5px 0;padding:10px 15px;}
+.idt-bad > b{color:#e79180;font-size:14.5px;}
+.idt-fix{display:block;font-size:12.5px;color:var(--text-dim);margin-top:7px;line-height:1.55;}
+.idt-fix b{color:var(--text-bright);}
+.idt-hintline{display:block;font-size:11px;color:var(--text-faint);margin-top:4px;}
+.idt-none{display:block;font-size:12.5px;color:var(--text-faint);padding:2px 0 6px;}
+.idt-others{margin-top:7px;font-size:12px;color:var(--text-faint);}
+.idt-others select{background:#231f1b;border:1px solid var(--border);color:var(--text-bright);padding:3px 7px;border-radius:3px;font-size:12px;font-family:inherit;font-weight:600;margin-left:5px;}
+.summary{display:flex;flex-wrap:wrap;gap:0 30px;background:var(--row-bg);border-radius:5px;padding:11px 15px;}
+.summary div{font-size:12.5px;color:var(--text-dim);padding:2px 0;}
+.summary div b{color:var(--text-bright);font-weight:700;margin-left:5px;}
+
+/* ---------- Flight table ---------- */
+table{width:100%;border-collapse:collapse;}
+th{
+  text-align:left;font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;
+  color:var(--text-faint);font-weight:700;padding:0 9px 7px;border-bottom:1px solid var(--border);
+}
+th.num,td.num{text-align:right;}
+td{padding:7px 9px;font-size:13.5px;border-bottom:1px solid rgba(255,255,255,.05);}
+tr.flight{cursor:pointer;}
+tr.flight:hover td{background:var(--row-bg-hover);}
+tr.flight.on td{background:rgba(217,164,75,.09);}
+tr.flight.on td.plane{color:var(--amber-bright);}
+td.plane{color:var(--text-bright);font-weight:700;}
+td.dim{color:var(--text-dim);font-size:12.5px;}
+input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;vertical-align:middle;}
+.tag{
+  display:inline-block;padding:1px 7px;border-radius:3px;font-size:9.5px;font-weight:700;
+  letter-spacing:.7px;text-transform:uppercase;border:1px solid;margin-left:7px;white-space:nowrap;
+}
+.tag.player{color:var(--amber);border-color:rgba(217,164,75,.45);background:rgba(217,164,75,.12);}
+.tag.authored{color:var(--good);border-color:rgba(127,174,109,.4);background:rgba(127,174,109,.1);}
+.tag.filler{color:var(--text-faint);border-color:var(--border);background:rgba(255,255,255,.03);}
+tr.flight.extra td.plane{color:var(--text-dim);font-weight:400;}
+.showall{margin-top:9px;font-size:12px;color:var(--text-faint);}
+.showall label{cursor:pointer;display:inline-flex;align-items:center;gap:7px;}
+.showall label:hover{color:var(--text);}
+.summary .added{color:var(--text-faint);font-weight:400;font-size:11.5px;margin-left:4px;}
+.tag.ai0{color:var(--warn);border-color:rgba(226,162,58,.4);background:rgba(226,162,58,.1);}
+
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:8px 22px;}
+.opt{display:flex;align-items:center;gap:10px;padding:7px 11px;background:var(--row-bg);border-radius:4px;font-size:13.5px;}
+.opt label{flex:1;cursor:pointer;}
+.opt small{display:block;color:var(--text-faint);font-size:11.5px;line-height:1.45;margin-top:2px;}
+.opt select,.opt input[type=text]{
+  background:#231f1b;border:1px solid var(--border);color:var(--text-bright);
+  padding:4px 7px;border-radius:3px;font-size:13px;font-family:inherit;font-weight:600;
+}
+.name-row{display:flex;align-items:center;gap:11px;background:var(--row-bg);border-radius:4px;padding:9px 12px;}
+.name-row label{font-size:13.5px;white-space:nowrap;}
+.name-row input{
+  flex:1;background:#231f1b;border:1px solid var(--border);color:var(--text-bright);
+  padding:6px 9px;border-radius:3px;font-size:14px;font-family:inherit;font-weight:600;
+}
+.name-row input:focus{outline:none;border-color:var(--amber);}
+.name-row .ext{font-family:Consolas,Menlo,monospace;font-size:12px;color:var(--text-faint);}
+
+.folder-row{display:flex;align-items:center;gap:14px;background:var(--row-bg);border-radius:4px;padding:8px 12px;margin-bottom:5px;}
+.folder-row.target{background:rgba(217,164,75,.1);}
+.folder-name{font-size:14px;color:var(--text-bright);font-weight:700;min-width:190px;}
+.folder-files{flex:1;font-size:11.5px;color:var(--text-faint);font-family:Consolas,Menlo,monospace;overflow-wrap:anywhere;}
+.folder-warn{color:var(--warn);}
+.folder-del{background:#3a2b28;border:1px solid rgba(200,92,74,.35);color:#e2917f;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:700;flex-shrink:0;}
+.folder-del:hover{background:#4a332e;border-color:var(--danger);color:#f0a894;}
+.folder-empty{font-size:12.5px;color:var(--text-faint);padding:6px 2px;}
+.plan{background:#1f1c18;border:1px solid var(--border);border-radius:5px;padding:12px 15px;font-family:Consolas,Menlo,monospace;font-size:12px;line-height:1.75;color:var(--text-dim);}
+.plan b{color:var(--good);font-weight:700;}
+.plan i{color:var(--amber);font-style:normal;}
+.plan .out{color:var(--text);}
+
+.note{font-size:12.5px;line-height:1.6;color:var(--text-dim);background:rgba(217,164,75,.07);border-left:2px solid var(--accent);padding:9px 13px;border-radius:0 4px 4px 0;margin:12px 0 0;}
+.note.warn{background:rgba(226,162,58,.08);border-left-color:var(--warn);}
+.note b{color:var(--amber);}
+
+.actionbar{
+  position:fixed;left:0;right:0;bottom:0;background:var(--bg-toolbar);
+  border-top:1px solid var(--border);padding:12px 24px;display:none;
+  align-items:center;gap:14px;box-shadow:0 -4px 18px rgba(0,0,0,.4);z-index:30;
+}
+.actionbar.show{display:flex;}
+.actionbar .count{font-size:12.5px;color:var(--text-dim);margin-left:auto;}
+.actionbar .count b{color:var(--text-bright);}
+
+#toast{
+  position:fixed;left:50%;bottom:86px;transform:translateX(-50%) translateY(20px);
+  background:#1b1815;border:1px solid var(--border);border-left:3px solid var(--good);
+  color:var(--text-bright);padding:11px 18px;border-radius:5px;font-size:13.5px;
+  box-shadow:0 10px 30px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:.2s;z-index:80;max-width:min(90vw,640px);
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+#toast.err{border-left-color:var(--danger);}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--text-faint);border-top-color:var(--amber);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <a class="app-brand" href="index.html" title="All IL-2 Korea tools">
+    <span class="plane">✈</span>
+    <span class="app-brand-text"><b>IL-2 KOREA TOOLS</b><span>Cooperative Converter</span></span>
+  </a>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="btnFolder">📁 Choose data folder…</button>
+  <button class="tb-btn" id="btnFile">Open a .Mission file…</button>
+  <div class="tb-status" id="tbStatus"></div>
+</div>
+
+<div class="wrap">
+  <div class="page-title">
+    <h1>Cooperative Converter</h1>
+    <span class="sub" id="fileSub">No mission loaded</span>
+  </div>
+
+  <div class="empty-state" id="emptyState">
+    <h2>Turn a generated mission into one you can fly with friends</h2>
+    <p>
+      Build a mission in the in-game <b>Task Editor</b> and fly it once. The game writes it to
+      <code>data\Missions\_gen.Mission</code>. This converts that into a cooperative
+      multiplayer mission — briefing text included, which is the part the older
+      converter left behind.
+    </p>
+    <p>
+      Pick your <b>data</b> folder and everything is found and written automatically.
+      Opening a single file instead works too, but the briefing can't come along.
+    </p>
+    <p style="color:var(--warn);">
+      The game keeps <b>only the mission you flew most recently</b> — it overwrites
+      <code>_gen.Mission</code> every time. Whichever mission you want to convert,
+      fly that one last.
+    </p>
+    <div class="path-hints" id="pathHints"></div>
+    <button class="tb-btn primary" id="btnEmptyFolder" style="margin:0 auto;">📁 Choose data folder…</button>
+  </div>
+
+  <div id="mainContent" style="display:none;">
+
+    <div class="group">
+      <h3>Source mission <span class="hint" id="srcHint"></span></h3>
+      <div class="identity" id="identity"></div>
+      <div class="summary" id="summary"></div>
+    </div>
+
+    <div class="group">
+      <h3>Flights <span class="hint">Tick every flight you want players able to fly</span></h3>
+      <table>
+        <thead><tr>
+          <th style="width:34px;"></th>
+          <th>Aircraft</th>
+          <th class="num" style="width:56px;">Count</th>
+          <th style="width:150px;">Callsign</th>
+          <th style="width:110px;">Country</th>
+          <th class="num" style="width:80px;">Altitude</th>
+          <th class="num" style="width:70px;">AI</th>
+        </tr></thead>
+        <tbody id="flightRows"></tbody>
+      </table>
+      <div id="showAllWrap" class="showall">
+        <label><input type="checkbox" id="optShowAll"> <span id="showAllLabel"></span></label>
+      </div>
+      <div class="note" id="flightNote"></div>
+    </div>
+
+    <div class="group">
+      <h3>Output</h3>
+      <div class="name-row">
+        <label for="outName">Mission name</label>
+        <input type="text" id="outName" placeholder="e.g. Owl Flight Intercept">
+        <span class="ext">→ Multiplayer\Cooperative\</span>
+      </div>
+      <div class="opts" style="margin-top:10px;">
+        <div class="opt">
+          <input type="checkbox" id="optLoc" checked>
+          <label for="optLoc">Copy the briefing and localization files
+            <small id="locSub">Every <code>_gen.*</code> language file beside the mission, renamed to match.</small></label>
+        </div>
+      </div>
+      <div class="plan" id="plan"></div>
+      <div class="note warn" id="staleNote" style="display:none;"></div>
+    </div>
+
+    <div class="group" id="folderGroup" style="display:none;">
+      <h3>Cooperative folder <span class="hint">Missions already written, and what belongs to each</span></h3>
+      <div id="folderList"></div>
+      <div class="note">
+        Converting again overwrites <code>.Mission</code> and the language files, but
+        anything left over from a previous run — a language you no longer have, or a
+        <code>.msnbin</code> and <code>.list</code> made by the resaver — stays behind and
+        keeps being used. Delete a mission's whole set before rebuilding it if you want a
+        clean slate.
+      </div>
+      <div class="note warn" id="resaverNote">
+        <b>One manual step afterwards.</b> This writes the mission and its text, which is
+        what the game reads. It cannot produce the <code>.msnbin</code> or <code>.list</code>
+        companion files — those use a hash that isn't any standard checksum. The game ships the
+        tool that makes them: drop your new mission onto
+        <code>bin\resaver\MissionResaver.exe</code>. The shipped Korea coop example has no
+        <code>.msnbin</code> at all, so try it as-is first — you may not need this.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="actionbar" id="actionbar">
+  <button class="tb-btn primary" id="btnConvert">Convert to cooperative</button>
+  <button class="tb-btn" id="btnPreview">&lt;/&gt; Preview changes</button>
+  <span class="count" id="slotCount"></span>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+/* ====================================================================
+   Reference tables — read out of the game's own plain-text data files.
+   data/GUI/DefaultCountryNames.eng and data/GUI/DefaultCallsigns.eng.
+   ==================================================================== */
+const COUNTRY_NAMES = { 0:'Neutral', 501:'USSR', 502:'PRC', 503:'DPRK', 601:'USA' };
+const CALLSIGN_NAMES = [
+  'None','Red','Blue','Green','Yellow','White','Black','Eagle','Raven','Hawk','Kite',
+  'Falcon','Vulture','Owl','Seagull','Albatros','Crane','Heron',
+  'Granite','Sapphire','Jasper','Agate','Opal','Topaz','Zircon','Diamond','Typhoon',
+  'Storm','Squall','Snowstorm','Blizzard','Gale','Thunderstorm','Thunder','Lightning','Cyclone',
+  'Able','Baker','Charlie','Dog','Easy','Fox','George','How','Item','Jig','King','Love',
+  'Mike','Nan','Oboe','Peter','Queen','Roger','Sugar','Tare','Uncle','Victor','William',
+  'Xray','Yoke','Zebra',
+];
+const PLANE_LABELS = {
+  mig15bis:'MiG-15bis', la11:'La-11', il10:'Il-10', tu2:'Tu-2', yak9p:'Yak-9P',
+  yak9s1:'Yak-9S', li2t:'Li-2T', f86a5:'F-86A-5', f80c10:'F-80C-10', f84e:'F-84E',
+  f51d:'F-51D', p51d15:'P-51D-15', b29:'B-29', c47b:'C-47B',
+};
+// Confirmed by reading MissionType out of every mission shipped with the game:
+// the hand-built demos are 0, everything in Multiplayer\Cooperative is 1, the
+// dogfight example is 2. 703 and 1101 are what the two generators stamp on their
+// output, and match the missionType stored in a saved Task Editor mission.
+const MISSION_TYPES = {
+  0:'Single player', 1:'Cooperative', 2:'Dogfight',
+  703:'Quick Mission', 1101:'Task Editor',
+};
+const SEASON_NAMES = { sp:'Spring', su:'Summer', au:'Autumn', wi:'Winter', sw:'Snowy winter' };
+
+// CloudConfig looks like "summer\00_Clear_00\sky.ini" — the middle segment is
+// <cover index>_<cover name>_<variant>, so the readable name is already in there.
+function skyName(cloudConfig){
+  const seg = (cloudConfig || '').split(/[\\/]/).slice(-2, -1)[0] || '';
+  const m = seg.match(/^(\d+)_(.+)_(\d+)$/);
+  if(!m) return seg || '—';
+  const name = m[2].replace(/_/g, ' ');
+  return +m[3] === 0 ? name : `${name}, variant ${+m[3]}`;
+}
+
+const DATA_HINTS = [
+  'C:\\Program Files (x86)\\Steam\\steamapps\\common\\IL2Series\\data',
+  'C:\\Steam\\steamapps\\common\\IL2Series\\data',
+  'D:\\Steam\\steamapps\\common\\IL2Series\\data',
+];
+
+const App = {
+  text:null,          // the whole .Mission as a string
+  parsed:null,
+  fileName:null,
+  dirHandle:null,     // the "data" folder, when granted
+  missionsDir:null,
+  localeFiles:[],     // [{name, ext, handle|file}]
+  selected:new Set(), // flight indices chosen as coop slots
+  presets:[],         // saved Task Editor missions, for identifying the source
+  match:null,         // best-scoring preset for the loaded mission
+  genMtime:0,
+  coopDir:null,       // Multiplayer\Cooperative, when the data folder is granted
+  existing:[],        // [{name, files:[...]}] already written there
+};
+
+const $  = s => document.querySelector(s);
+const el = t => document.createElement(t);
+
+let toastTimer = null;
+function toast(msg, isErr){
+  const t = $('#toast');
+  t.innerHTML = msg;
+  t.className = 'show' + (isErr ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ t.className=''; }, isErr ? 8000 : 4200);
+}
+
+/* ====================================================================
+   Parsing.
+
+   A generated Korea mission is ~22 MB of CRLF text, so nothing here
+   splits the file into lines or builds an object graph for it. We scan
+   once for the handful of blocks that matter, pull fields out of those
+   short substrings, and record byte offsets for everything we intend to
+   rewrite. Edits are collected and applied in a single pass at the end.
+   ==================================================================== */
+
+// Field lines are indented; a closing brace sits alone at column 0. That
+// makes the end of a block the next "\n}" — no brace counting needed,
+// and Plane blocks were confirmed to contain no nested braces.
+function blockEnd(text, from){
+  const i = text.indexOf('\n}', from);
+  return i === -1 ? text.length : i;
+}
+
+function fieldOf(block, key){
+  const m = block.match(new RegExp('^[ \\t]*' + key + '\\s*=\\s*(.*?);', 'm'));
+  return m ? m[1].trim() : null;
+}
+function numOf(block, key){
+  const v = fieldOf(block, key);
+  if(v === null) return null;
+  const n = parseFloat(v);
+  return Number.isNaN(n) ? null : n;
+}
+function strOf(block, key){
+  const v = fieldOf(block, key);
+  if(v === null) return null;
+  return v.replace(/^"|"$/g, '');
+}
+// Offsets of one "  Key = value;" line inside a block, in absolute file
+// coordinates, so it can be spliced without touching anything around it.
+function lineRange(text, blockStart, block, key){
+  const m = block.match(new RegExp('^[ \\t]*' + key + '\\s*=\\s*.*?;', 'm'));
+  if(!m) return null;
+  return { start: blockStart + m.index, end: blockStart + m.index + m[0].length, text: m[0] };
+}
+
+function scriptKey(scriptPath){
+  return (scriptPath || '').split(/[\\/]/).pop().replace(/\.txt$/i, '').toLowerCase();
+}
+function planeLabel(scriptPath){
+  const k = scriptKey(scriptPath);
+  return PLANE_LABELS[k] || k || 'unknown';
+}
+
+function parseMission(text){
+  // --- Options block ---
+  const optIdx = text.search(/^Options\r?$/m);
+  if(optIdx === -1) throw new Error('No Options block — this does not look like a mission file.');
+  const optEnd = blockEnd(text, optIdx);
+  const optBlock = text.slice(optIdx, optEnd);
+
+  const missionType = lineRange(text, optIdx, optBlock, 'MissionType');
+  if(!missionType) throw new Error('No MissionType in Options — cannot convert this file.');
+
+  // MultiplayerPlaneConfig lines go with the other Options entries. Anchor
+  // after PlayerConfig, which is where the game's own coop files put them.
+  const anchor = lineRange(text, optIdx, optBlock, 'PlayerConfig')
+              || lineRange(text, optIdx, optBlock, 'LCAuthor')
+              || missionType;
+  const existingMPC = [];
+  {
+    const re = /^[ \t]*MultiplayerPlaneConfig\s*=\s*.*?;\r?\n/gm;
+    let m;
+    while((m = re.exec(optBlock))) existingMPC.push({ start: optIdx + m.index, end: optIdx + m.index + m[0].length });
+  }
+
+  // --- Plane blocks ---
+  const planes = [];
+  const re = /^Plane\r?$/gm;
+  let m;
+  while((m = re.exec(text))){
+    const start = m.index;
+    const end = blockEnd(text, start);
+    const block = text.slice(start, end);
+    planes.push({
+      start, end,
+      name: strOf(block, 'Name'),
+      desc: strOf(block, 'Desc'),
+      script: strOf(block, 'Script'),
+      country: numOf(block, 'Country'),
+      aiLevel: numOf(block, 'AILevel'),
+      coopStart: numOf(block, 'CoopStart'),
+      nif: numOf(block, 'NumberInFormation'),
+      callsign: numOf(block, 'Callsign'),
+      callnum: numOf(block, 'Callnum'),
+      alt: numOf(block, 'YPos'),
+      coopRange: lineRange(text, start, block, 'CoopStart'),
+      aiRange: lineRange(text, start, block, 'AILevel'),
+    });
+    re.lastIndex = end;   // don't rescan the block we just consumed
+  }
+
+  // --- Flights ---
+  // Planes appear in flight order and NumberInFormation restarts at 0 for
+  // each one. Confirmed against a generated mission: ten flights, and the
+  // PLAYERSQUAD run sat entirely inside a single group.
+  const flights = [];
+  for(const p of planes){
+    if(p.nif === 0 || !flights.length) flights.push({ planes:[] });
+    flights[flights.length - 1].planes.push(p);
+  }
+  for(const f of flights){
+    const lead = f.planes[0];
+    f.script   = lead.script;
+    f.label    = planeLabel(lead.script);
+    f.count    = f.planes.length;
+    f.country  = lead.country;
+    f.callsign = lead.callsign;
+    f.alt      = Math.round(lead.alt || 0);
+    f.isPlayer = f.planes.some(p => p.desc === 'PLAYERSQUAD');
+    f.hasAi0   = f.planes.some(p => p.aiLevel === 0);
+    f.maxAi    = Math.max(...f.planes.map(p => p.aiLevel || 0));
+  }
+
+  return { optIdx, optEnd, missionType, anchor, existingMPC, planes, flights,
+           header:{
+             type:       numOf(optBlock, 'MissionType'),
+             date:       fieldOf(optBlock, 'Date'),
+             time:       fieldOf(optBlock, 'Time'),
+             map:        strOf(optBlock, 'GuiMap'),
+             clouds:     strOf(optBlock, 'CloudConfig'),
+             cloudLevel: numOf(optBlock, 'CloudLevel'),
+             season:     strOf(optBlock, 'SeasonPrefix'),
+           } };
+}
+
+/* ====================================================================
+   Identifying which saved mission this is.
+
+   _gen.Mission is anonymous — the game overwrites the same file every
+   time and stores nothing about which Task Editor mission produced it.
+   But the saved presets hold the design that was fed to the generator,
+   so the generated file can be fingerprinted back against them: the
+   player's flight, the enemy formations, the clock and the sky.
+   ==================================================================== */
+
+async function readPresets(dataDir){
+  const out = [];
+  try{
+    let d = dataDir;
+    for(const seg of ['NSData','UserData','QuickMission','Presets']) d = await d.getDirectoryHandle(seg);
+    for await (const [name, handle] of d.entries()){
+      if(handle.kind !== 'file' || !/\.json$/i.test(name)) continue;
+      const file = await handle.getFile();
+      try{
+        const q = JSON.parse(await file.text()).qmission;
+        if(q) out.push({
+          fileName:name,
+          name: q.internalName || name.replace(/_\d{4}-\d{2}-\d{2}_.*$/, ''),
+          q, mtime:file.lastModified,
+        });
+      }catch(e){ /* not a preset, or unreadable — skip it silently */ }
+    }
+  }catch(e){ /* no Presets folder — nothing to match against */ }
+  return out;
+}
+
+// Formations the preset asked for, flattened to "type xN". A zero-count
+// formation is a real thing the Task Editor allows, and produces nothing
+// in the mission, so it must not count against a match.
+function presetGroups(side){
+  return (side || []).flatMap(f => (f.groups || [])
+    .filter(g => g.quantity > 0)
+    .map(g => ({ key: scriptKey(g.worldObjectSetup && g.worldObjectSetup.objectCfg), n: g.quantity })));
+}
+
+function scorePreset(p, P, genMtime){
+  const q = p.q, reasons = [];
+  let score = 0;
+
+  const player = P.flights.find(f => f.isPlayer);
+  const friendly = presetGroups(q.friendly);
+  if(player && friendly.length){
+    if(scriptKey(player.script) === friendly[0].key){ score += 3; reasons.push('your aircraft'); }
+    if(player.count === friendly[0].n){ score += 3; reasons.push('flight size'); }
+  }
+
+  // "9:30:0" in the mission vs "09:30" in the preset
+  const genTime = (P.header.time || '').split(':').slice(0,2).map(n=>+n).join(':');
+  const preTime = (q.time || '').split(':').slice(0,2).map(n=>+n).join(':');
+  if(genTime && genTime === preTime){ score += 2; reasons.push('time'); }
+
+  // CloudConfig folder is "<season>\NN_Name_VV\sky.ini"
+  const cc = (P.header.clouds || '').split(/[\\/]/).slice(-2,-1)[0] || '';
+  const m = cc.match(/^(\d+)_.*_(\d+)$/);
+  if(m && q.envConfig && +m[1] === q.envConfig.cloudCover && +m[2] === q.envConfig.cloudVariant){
+    score += 2; reasons.push('sky');
+  }
+  if(q.envConfig && P.header.cloudLevel === q.envConfig.cloudLevel){ score += 1; reasons.push('cloud altitude'); }
+  if(q.envConfig && P.header.season === q.envConfig.season){ score += 1; }
+
+  // Every enemy formation the preset asked for should exist as a flight.
+  const others = P.flights.filter(f => !f.isPlayer).map(f => ({ key:scriptKey(f.script), n:f.count }));
+  const pool = others.slice();
+  let hits = 0;
+  for(const g of presetGroups(q.enemy)){
+    const i = pool.findIndex(o => o.key === g.key && o.n === g.n);
+    if(i >= 0){ pool.splice(i,1); hits++; }
+  }
+  if(hits){ score += hits; reasons.push(hits + ' enemy formation' + (hits>1?'s':'')); }
+
+  // Saved shortly before the mission was generated — corroborating, never decisive.
+  let gap = null;
+  if(genMtime && p.mtime && p.mtime <= genMtime){
+    gap = (genMtime - p.mtime) / 1000;
+    if(gap < 600){ score += 2; reasons.push('saved just before'); }
+  }
+  return { preset:p, score, reasons, gap };
+}
+
+function matchPresets(){
+  if(!App.presets.length || !App.parsed){ App.match = null; return; }
+  const scored = App.presets
+    .map(p => scorePreset(p, App.parsed, App.genMtime))
+    .sort((a,b)=> b.score - a.score);
+  App.candidates = scored;
+  // A player-flight match alone is 6; demand more than that before claiming an
+  // identification. A tie is not an identification either — two saved missions
+  // can be identical in everything we can see, and guessing between them would
+  // put the wrong name on the output file.
+  const top = scored[0], next = scored[1];
+  App.match = (top && top.score >= 8 && (!next || top.score > next.score)) ? top : null;
+}
+
+// Does this saved mission actually account for what is in the file? Every
+// formation it asks for should be present as a flight. Anything missing means
+// the file was generated from something else — most often because the game
+// only ever keeps the last mission flown, and this one hasn't been flown since.
+function presetFit(p, P){
+  const friendly = presetGroups(p.q.friendly);
+  const enemy    = presetGroups(p.q.enemy);
+  const player   = P.flights.find(f => f.isPlayer);
+  const matched = [], missing = [];
+  // Everything except the player's own flight is fair game for the rest.
+  const pool = P.flights.filter(f => f !== player).map(f => ({ key:scriptKey(f.script), n:f.count }));
+  let rest = friendly.concat(enemy);
+
+  // The first friendly formation IS the player's flight, so it has to match
+  // *that* flight — not merely some flight of the same type and size. Without
+  // this, a mission asking for six of your aircraft "fits" a file where the six
+  // belong to unrelated background traffic and yours numbers two.
+  if(player && friendly.length){
+    const g = friendly[0];
+    rest = friendly.slice(1).concat(enemy);
+    (scriptKey(player.script) === g.key && player.count === g.n ? matched : missing).push(g);
+  }
+  for(const g of rest){
+    const i = pool.findIndex(o => o.key === g.key && o.n === g.n);
+    if(i >= 0){ pool.splice(i, 1); matched.push(g); }
+    else missing.push(g);
+  }
+  return { want: friendly.concat(enemy), matched, missing, ok: missing.length === 0 };
+}
+
+function groupLabel(g){ return (PLANE_LABELS[g.key] || g.key) + ' ×' + g.n; }
+
+// Once we know which mission this is, we know which flights the person
+// actually placed — the rest is traffic the generator invented around them.
+// Only tag when the mission fully accounts for the file; a partial match would
+// put "you placed this" on a flight that merely happens to be the same size.
+function markAuthored(){
+  for(const f of (App.parsed ? App.parsed.flights : [])) f.authored = f.isPlayer;
+  if(!App.match || !presetFit(App.match.preset, App.parsed).ok) return;
+  const q = App.match.preset.q;
+  const pool = App.parsed.flights.filter(f => !f.isPlayer);
+  for(const g of presetGroups(q.friendly).slice(1).concat(presetGroups(q.enemy))){
+    const hit = pool.find(f => !f.authored && scriptKey(f.script) === g.key && f.count === g.n);
+    if(hit) hit.authored = true;
+  }
+}
+
+/* --------------------------- Conversion --------------------------- */
+
+function buildEdits(){
+  const P = App.parsed;
+  const edits = [];
+  const chosen = [...App.selected].map(i => P.flights[i]);
+  const coopPlanes = chosen.flatMap(f => f.planes);
+
+  // 1. MissionType -> 1 (cooperative)
+  const indent = (P.missionType.text.match(/^[ \t]*/) || [''])[0];
+  edits.push({ ...P.missionType, replacement: indent + 'MissionType = 1;' });
+
+  // 2. MultiplayerPlaneConfig, one per distinct flyable type. Drop any that
+  //    were already there so re-converting a file stays idempotent.
+  for(const e of P.existingMPC) edits.push({ start:e.start, end:e.end, replacement:'' });
+
+  const types = [];
+  for(const p of coopPlanes){
+    const k = scriptKey(p.script);
+    if(k && !types.includes(k)) types.push(k);
+  }
+  // The game's own coop files write this path capitalised with a lowercase
+  // filename; generated missions vary the case. Normalise to the shipped form.
+  const mpc = types.map(k => `${indent}MultiplayerPlaneConfig = "LuaScripts\\WorldObjects\\Planes\\${k}.txt";`).join('\r\n');
+  if(mpc) edits.push({ start:P.anchor.end, end:P.anchor.end, replacement:'\r\n' + mpc });
+
+  // 3. CoopStart on every chosen aircraft, cleared on everything else.
+  const wanted = new Set(coopPlanes);
+  for(const p of P.planes){
+    if(!p.coopRange) continue;
+    const want = wanted.has(p) ? 1 : 0;
+    if(p.coopStart === want) continue;       // already right — leave the line alone
+    const ind = (p.coopRange.text.match(/^[ \t]*/) || [''])[0];
+    edits.push({ ...p.coopRange, replacement: ind + 'CoopStart = ' + want + ';' });
+  }
+
+  // AILevel is deliberately left alone. It is the AI skill setting and the
+  // mission already carries whatever the Task Editor asked for.
+
+  return { edits, types, coopPlanes, chosen };
+}
+
+// Apply every edit in one pass. Splicing a 22 MB string per edit would copy
+// the whole file each time; collecting slices and joining once does not.
+function applyEdits(text, edits){
+  const sorted = edits.slice().sort((a,b)=> a.start - b.start || a.end - b.end);
+  const out = [];
+  let cursor = 0;
+  for(const e of sorted){
+    if(e.start < cursor) continue;           // overlapping edit — skip defensively
+    out.push(text.slice(cursor, e.start));
+    out.push(e.replacement);
+    cursor = e.end;
+  }
+  out.push(text.slice(cursor));
+  return out.join('');
+}
+
+function convertedText(){
+  const { edits } = buildEdits();
+  return applyEdits(App.text, edits);
+}
+
+/* ------------------------------ Rendering ------------------------------ */
+
+function renderSummary(){
+  const P = App.parsed, h = P.header;
+  markAuthored();
+
+  // Count what the mission actually asked for, not what landed on the map. The
+  // raw totals are meaningless on their own — a three-formation mission comes
+  // out as ten flights once the generator has filled the sky in around it.
+  const yours  = P.flights.filter(f => f.authored);
+  const identified = yours.length > 0;
+  const addedF = P.flights.length - yours.length;
+  const addedA = P.planes.length - yours.reduce((s,f)=> s + f.count, 0);
+
+  const rows = [
+    ['Map', h.map || '—'],
+    ['Date', h.date || '—'],
+    ['Time', (h.time || '—').replace(/:0$/, '')],
+    ['Season', SEASON_NAMES[h.season] || h.season || '—'],
+    ['Sky', skyName(h.clouds)],
+    ['Mission type', MISSION_TYPES[h.type] || `unknown (${h.type})`],
+  ];
+  if(identified){
+    rows.push(['Your flights', `${yours.length}<span class="added"> +${addedF} added</span>`]);
+    rows.push(['Your aircraft', `${yours.reduce((s,f)=>s+f.count,0)}<span class="added"> +${addedA} added</span>`]);
+  } else {
+    rows.push(['Flights', P.flights.length], ['Aircraft', P.planes.length]);
+  }
+  $('#summary').innerHTML = rows.map(([k,v]) => `<div>${k}<b>${v}</b></div>`).join('');
+  $('#srcHint').textContent = App.fileName || '';
+  renderIdentity();
+}
+
+// The whole point of this panel: _gen.Mission is the same anonymous filename
+// every time, so say plainly which of the saved missions it actually is, and
+// show the evidence rather than asserting it.
+function renderIdentity(){
+  const box = $('#identity');
+  if(!App.presets.length){
+    box.innerHTML = App.dirHandle
+      ? '<span class="idt-none">No saved Task Editor missions found, so this file cannot be identified. ' +
+        'Save your mission in the Task Editor and it will be named here next time.</span>'
+      : '<span class="idt-none">Open the <b>data</b> folder instead of a single file and this will tell you ' +
+        'which saved mission you are looking at.</span>';
+    return;
+  }
+  const cands = App.candidates || [];
+  const best = App.match;
+  const gapText = g => g == null ? '' :
+    g < 90 ? `generated ${Math.round(g)}s later` :
+    g < 5400 ? `generated ${Math.round(g/60)} min later` : '';
+
+  let html = '';
+  const fit = best ? presetFit(best.preset, App.parsed) : null;
+
+  if(best && fit.ok){
+    html += `<div class="idt-hit">This is <b>${best.preset.name}</b>` +
+            `<span class="idt-why">matched on ${best.reasons.join(', ')}` +
+            (best.gap != null && gapText(best.gap) ? ` · ${gapText(best.gap)}` : '') + `</span></div>`;
+  } else if(best){
+    // The name was asserted — by the scorer or by the person — but the file
+    // disagrees. Say exactly how, and say what to do about it, because the
+    // answer is never obvious: you have to go and fly that mission again.
+    html += `<div class="idt-bad">` +
+      `<b>This file was not generated from ${best.preset.name}.</b>` +
+      `<span class="idt-why">That mission uses ${fit.missing.map(groupLabel).join(', ')}, ` +
+      `which ${fit.missing.length === 1 ? 'is' : 'are'} not in this file.</span>` +
+      `<span class="idt-fix">The game keeps only the mission you flew most recently. ` +
+      `To convert <b>${best.preset.name}</b>, load it in the Task Editor, press START, ` +
+      `then reload the folder here.</span></div>`;
+  } else {
+    html += '<div class="idt-miss">Could not confidently match this to a saved mission — ' +
+            'it may have been changed in the Task Editor after saving, or never saved at all.</div>';
+  }
+
+  if(cands.length){
+    html += '<div class="idt-others"><label>Named wrongly? Identify this file as: <select id="idtPick">' +
+      '<option value="-1"' + (best ? '' : ' selected') + '>— don\'t name it —</option>' +
+      cands.map((c,i) => {
+        const f = presetFit(c.preset, App.parsed);
+        return `<option value="${i}"${c===best?' selected':''}>${c.preset.name}` +
+               (f.ok ? '' : ' — doesn\'t fit this file') + `</option>`;
+      }).join('') +
+      '</select></label>' +
+      '<span class="idt-hintline">This only labels the mission already loaded; it cannot swap in a different one.</span>' +
+      '</div>';
+  }
+  box.innerHTML = html;
+
+  const pick = $('#idtPick');
+  if(pick) pick.addEventListener('change', ()=>{
+    const i = Number(pick.value);
+    App.match = i >= 0 ? App.candidates[i] : null;
+    // Only borrow the name when the mission actually accounts for this file.
+    // Naming the output after a mission it plainly isn't would be worse than
+    // leaving the fallback name in place.
+    if(App.match && presetFit(App.match.preset, App.parsed).ok){
+      $('#outName').value = App.match.preset.name;
+      $('#outName').dataset.auto = '1';
+    }
+    render();
+  });
+}
+
+function renderFlights(){
+  const tb = $('#flightRows');
+  tb.innerHTML = '';
+  markAuthored();
+
+  // Only the flights the mission actually placed are worth choosing between.
+  // The rest is scenery the generator invented; keep it reachable but out of
+  // the way, and never hide a flight that is currently ticked.
+  const anyAuthored = App.parsed.flights.some(f => f.authored);
+  const showAll = $('#optShowAll').checked || !anyAuthored;
+  const visible = App.parsed.flights
+    .map((f, i) => ({ f, i }))
+    .filter(({f, i}) => showAll || f.authored || App.selected.has(i));
+
+  visible.forEach(({f, i}) => {
+    const tr = el('tr');
+    tr.className = 'flight' + (App.selected.has(i) ? ' on' : '') + (f.authored ? '' : ' extra');
+    const cs = f.callsign > 0 ? (CALLSIGN_NAMES[f.callsign] || f.callsign) : '—';
+    const badge = f.isPlayer ? '<span class="tag player">Your flight</span>'
+                : f.authored ? '<span class="tag authored">You placed this</span>'
+                : '<span class="tag filler">Generator</span>';
+    tr.innerHTML =
+      `<td><input type="checkbox" ${App.selected.has(i) ? 'checked' : ''}></td>` +
+      `<td class="plane">${f.label}${badge}</td>` +
+      `<td class="num">${f.count}</td>` +
+      `<td class="dim">${cs}</td>` +
+      `<td class="dim">${COUNTRY_NAMES[f.country] || f.country}</td>` +
+      `<td class="num dim">${f.alt} m</td>` +
+      `<td class="num dim">${f.maxAi}${f.hasAi0 ? '<span class="tag ai0">has 0</span>' : ''}</td>`;
+    tr.addEventListener('click', e => {
+      if(e.target.tagName !== 'INPUT') e.preventDefault();
+      App.selected.has(i) ? App.selected.delete(i) : App.selected.add(i);
+      render();
+    });
+    tb.appendChild(tr);
+  });
+
+  const hidden = App.parsed.flights.length - visible.length;
+  const toggle = $('#showAllWrap');
+  toggle.style.display = anyAuthored ? '' : 'none';
+  $('#showAllLabel').textContent = showAll
+    ? `Hide the ${App.parsed.flights.length - App.parsed.flights.filter(f=>f.authored).length} flights the generator added`
+    : `Show ${hidden} more flight${hidden === 1 ? '' : 's'} the generator added`;
+
+  $('#flightNote').innerHTML = anyAuthored
+    ? '<b>These are the flights your mission placed.</b> Your own is ticked by default. ' +
+      'Ticking another — on either side — makes a two-sided coop, which is how the ' +
+      "game's own Korea coop example is built."
+    : '<b>No flight is marked <code>PLAYERSQUAD</code> in this file.</b> That marker is what a ' +
+      'Task Editor mission uses for your own flight, so this may be a Quick Mission or a ' +
+      'hand-built mission. Every flight is listed; tick whichever should be flyable.';
+}
+
+function renderPlan(){
+  if(!App.selected.size){
+    $('#plan').innerHTML = '<span style="color:var(--text-faint)">Tick at least one flight to see what will change.</span>';
+    return;
+  }
+  const { types, coopPlanes } = buildEdits();
+  const name = outName();
+  const locs = $('#optLoc').checked ? App.localeFiles.length : 0;
+
+  $('#plan').innerHTML =
+    `<div><i>MissionType</i> <b>${App.parsed.header.type} → 1</b>  (cooperative)</div>` +
+    types.map(k => `<div><i>+ MultiplayerPlaneConfig</i> <span class="out">LuaScripts\\WorldObjects\\Planes\\${k}.txt</span></div>`).join('') +
+    `<div><i>CoopStart = 1</i> on <b>${coopPlanes.length}</b> aircraft` +
+      ` <span class="out">(${coopPlanes.length} player slots)</span></div>` +
+    `<div style="margin-top:7px;">→ <span class="out">Multiplayer\\Cooperative\\${name}.Mission</span></div>` +
+    (locs ? `<div>→ <span class="out">${name}.{${App.localeFiles.map(f=>f.ext).join(',')}}</span>  (briefing text)</div>` : '');
+
+  // Anything already under this name that the conversion won't replace.
+  const stale = staleFor(name);
+  const note = $('#staleNote');
+  if(stale.length){
+    note.style.display = '';
+    note.innerHTML = `<b>${stale.length} leftover file${stale.length===1?'':'s'} under this name.</b> ` +
+      `<code>${stale.map(f=>f.name).join('</code>, <code>')}</code> ` +
+      `${stale.length===1?'is':'are'} already in <code>Multiplayer\\Cooperative</code> and will not be ` +
+      `replaced by this conversion — the game will keep reading ${stale.length===1?'it':'them'}. ` +
+      `Delete the mission below first if you want a clean rebuild.`;
+  } else {
+    note.style.display = 'none';
+  }
+  renderFolder();
+}
+
+function outName(){
+  const raw = $('#outName').value.trim();
+  return (raw || 'coop_mission').replace(/[\\/:*?"<>|]/g, '');
+}
+
+function render(){
+  const has = !!App.parsed;
+  $('#emptyState').style.display  = has ? 'none' : '';
+  $('#mainContent').style.display = has ? '' : 'none';
+  $('#actionbar').classList.toggle('show', has);
+  if(!has) return;
+  $('#fileSub').textContent = App.fileName;
+  renderSummary();
+  renderFlights();
+  renderPlan();
+  const slots = [...App.selected].reduce((s,i)=> s + App.parsed.flights[i].count, 0);
+  $('#slotCount').innerHTML = `<b>${slots}</b> player slot${slots===1?'':'s'} across <b>${App.selected.size}</b> flight${App.selected.size===1?'':'s'}`;
+  $('#btnConvert').disabled = !App.selected.size;
+  $('#btnFolder').textContent = App.dirHandle ? '📁 data folder linked' : '📁 Choose data folder…';
+  $('#optLoc').disabled = !App.localeFiles.length;
+  $('#locSub').textContent = App.localeFiles.length
+    ? App.localeFiles.length + ' language file' + (App.localeFiles.length===1?'':'s') + ' found beside the mission.'
+    : 'No language files available — open the data folder instead of a single file to include them.';
+}
+
+/* ------------------------------ Loading ------------------------------ */
+
+function ingest(text, fileName){
+  let parsed;
+  try{
+    parsed = parseMission(text);
+  }catch(err){
+    toast(err.message, true);
+    return false;
+  }
+  if(!parsed.planes.length){ toast('That mission contains no aircraft.', true); return false; }
+  App.text = text; App.parsed = parsed; App.fileName = fileName;
+  App.selected = new Set(parsed.flights.map((f,i)=> f.isPlayer ? i : -1).filter(i => i >= 0));
+  matchPresets();
+  // Name the output after the mission you actually built, when we can work
+  // out which one it was — "_gen" tells nobody anything.
+  const suggested = (App.match && presetFit(App.match.preset, parsed).ok)
+    ? App.match.preset.name
+    : (fileName.replace(/\.[^.]+$/,'') || 'coop').replace(/^_gen$/i, 'coop_mission');
+  if(!$('#outName').value.trim() || $('#outName').dataset.auto === '1'){
+    $('#outName').value = suggested;
+    $('#outName').dataset.auto = '1';
+  }
+  render();
+  return true;
+}
+
+async function pickFolder(){
+  if(typeof window.showDirectoryPicker !== 'function'){
+    toast('This browser cannot open folders — use “Open a .Mission file…” instead. Chrome or Edge supports the folder flow.', true);
+    return;
+  }
+  let dir;
+  try{
+    dir = await window.showDirectoryPicker({ mode:'readwrite' });
+  }catch(err){
+    if(err && err.name === 'AbortError') return;
+    console.error(err);
+    toast('Could not open that folder.', true);
+    return;
+  }
+
+  // Accept either the data folder or the Missions folder inside it.
+  let missions = null;
+  try{ missions = await dir.getDirectoryHandle('Missions'); }
+  catch(e){
+    try{ await dir.getFileHandle('_gen.Mission'); missions = dir; }
+    catch(e2){
+      toast('No <code>Missions</code> folder in there. Pick your game\'s <b>data</b> folder — the one containing <code>Missions</code> and <code>Multiplayer</code>.', true);
+      return;
+    }
+  }
+
+  toast('<span class="spinner"></span> Reading mission…');
+  let genHandle;
+  try{ genHandle = await missions.getFileHandle('_gen.Mission'); }
+  catch(e){
+    toast('No <code>_gen.Mission</code> in the Missions folder. Fly a Task Editor mission once and it will appear.', true);
+    return;
+  }
+
+  App.dirHandle = dir === missions ? null : dir;
+  App.missionsDir = missions;
+
+  // Collect the sibling language files; they are byte-copied later, so the
+  // handles are kept rather than the decoded text.
+  App.localeFiles = [];
+  for await (const [name, handle] of missions.entries()){
+    const m = name.match(/^_gen\.([a-z]{3})$/i);
+    if(m && handle.kind === 'file') App.localeFiles.push({ name, ext:m[1].toLowerCase(), handle });
+  }
+  App.localeFiles.sort((a,b)=> a.ext.localeCompare(b.ext));
+
+  // Saved Task Editor missions, used to work out which one this file came from.
+  App.presets  = App.dirHandle ? await readPresets(App.dirHandle) : [];
+  App.existing = App.dirHandle ? await readCoopFolder(App.dirHandle) : [];
+
+  const file = await genHandle.getFile();
+  App.genMtime = file.lastModified;
+  const text = await file.text();
+  if(ingest(text, file.name)){
+    toast(App.match
+      ? `Loaded ${file.name} — this is <b>${App.match.preset.name}</b>, ` +
+        `${App.parsed.flights.length} flights, ${App.localeFiles.length} language files.`
+      : `Loaded ${file.name} — ${(file.size/1048576).toFixed(1)} MB, ` +
+        `${App.parsed.flights.length} flights, ${App.localeFiles.length} language files.`);
+  }
+}
+
+function pickFile(){
+  const input = el('input');
+  input.type = 'file';
+  input.accept = '.Mission,.mission';
+  input.addEventListener('change', async ()=>{
+    const f = input.files[0];
+    if(!f) return;
+    toast('<span class="spinner"></span> Reading mission…');
+    App.dirHandle = null; App.missionsDir = null; App.localeFiles = [];
+    const text = await f.text();
+    if(ingest(text, f.name)) toast(`Loaded ${f.name} — ${(f.size/1048576).toFixed(1)} MB.`);
+  });
+  input.click();
+}
+
+/* ====================================================================
+   The Cooperative folder.
+
+   Converting again overwrites the mission and its language files, but never
+   removes anything: a language file from a previous run, or the .msnbin and
+   .list the resaver produces, all survive and keep being read. So show what
+   is actually in there and allow deleting a mission's whole set.
+   ==================================================================== */
+
+async function readCoopFolder(dataDir){
+  App.coopDir = null;
+  const out = [];
+  try{
+    const mp = await dataDir.getDirectoryHandle('Multiplayer');
+    App.coopDir = await mp.getDirectoryHandle('Cooperative');
+    const byName = new Map();
+    for await (const [name, handle] of App.coopDir.entries()){
+      if(handle.kind !== 'file') continue;
+      const dot = name.lastIndexOf('.');
+      if(dot <= 0) continue;
+      const base = name.slice(0, dot);
+      if(!byName.has(base)) byName.set(base, []);
+      byName.get(base).push({ name, ext: name.slice(dot + 1).toLowerCase(), handle });
+    }
+    for(const [name, files] of byName){
+      files.sort((a,b)=> a.ext.localeCompare(b.ext));
+      out.push({ name, files });
+    }
+    out.sort((a,b)=> a.name.localeCompare(b.name));
+  }catch(e){ /* folder not there yet — it gets created on the first convert */ }
+  return out;
+}
+
+// Which files already sitting under this name would NOT be replaced by the
+// conversion about to run, and so would linger as leftovers.
+function staleFor(name){
+  const entry = (App.existing || []).find(e => e.name.toLowerCase() === name.toLowerCase());
+  if(!entry) return [];
+  const willWrite = new Set(['mission']);
+  if($('#optLoc').checked) for(const lf of App.localeFiles) willWrite.add(lf.ext);
+  return entry.files.filter(f => !willWrite.has(f.ext));
+}
+
+async function deleteMissionFiles(entry){
+  if(!App.coopDir) return;
+  const list = entry.files.map(f => '  ' + f.name).join('\n');
+  if(!confirm(
+    `Permanently delete all ${entry.files.length} files for "${entry.name}" from ` +
+    `Multiplayer\\Cooperative?\n\n${list}\n\nThis cannot be undone.`
+  )) return;
+  let gone = 0, failed = [];
+  for(const f of entry.files){
+    try{ await App.coopDir.removeEntry(f.name); gone++; }
+    catch(err){ console.error(err); failed.push(f.name); }
+  }
+  App.existing = await readCoopFolder(App.dirHandle);
+  render();
+  toast(failed.length
+    ? `Deleted ${gone}, but could not remove ${failed.join(', ')} — in use, or read-only?`
+    : `Deleted all ${gone} files for ${entry.name}.`, failed.length > 0);
+}
+
+function renderFolder(){
+  const wrap = $('#folderGroup');
+  if(!App.dirHandle || !App.coopDir){ wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  const box = $('#folderList');
+  if(!App.existing.length){
+    box.innerHTML = '<div class="folder-empty">Nothing in <code>Multiplayer\\Cooperative</code> yet.</div>';
+    return;
+  }
+  box.innerHTML = '';
+  const target = outName().toLowerCase();
+  for(const entry of App.existing){
+    const row = el('div');
+    row.className = 'folder-row' + (entry.name.toLowerCase() === target ? ' target' : '');
+    const hasText = entry.files.some(f => f.ext !== 'mission' && f.ext !== 'msnbin' && f.ext !== 'list');
+    row.innerHTML =
+      `<div class="folder-name">${entry.name}` +
+      (entry.name.toLowerCase() === target ? '<span class="tag player">Will be overwritten</span>' : '') +
+      `</div>` +
+      `<div class="folder-files">${entry.files.length} files · ` +
+      entry.files.map(f => f.ext).join(', ') +
+      (hasText ? '' : ' <span class="folder-warn">· no briefing text</span>') + `</div>`;
+    const btn = el('button');
+    btn.className = 'folder-del';
+    btn.textContent = 'Delete';
+    btn.title = 'Remove every file belonging to this mission';
+    btn.addEventListener('click', ()=> deleteMissionFiles(entry));
+    row.appendChild(btn);
+    box.appendChild(row);
+  }
+}
+
+/* ------------------------------ Writing ------------------------------ */
+
+function download(filename, data, type){
+  const blob = data instanceof Blob ? data : new Blob([data], { type: type || 'text/plain' });
+  const a = el('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=> URL.revokeObjectURL(a.href), 6000);
+}
+
+async function convert(){
+  if(!App.selected.size) return;
+  const name = outName();
+  $('#btnConvert').disabled = true;
+  toast('<span class="spinner"></span> Converting…');
+
+  let text;
+  try{
+    text = convertedText();
+  }catch(err){
+    console.error(err);
+    toast('Conversion failed: ' + err.message, true);
+    $('#btnConvert').disabled = false;
+    return;
+  }
+
+  // Direct-to-disk when the data folder was granted.
+  if(App.dirHandle){
+    try{
+      const mp   = await App.dirHandle.getDirectoryHandle('Multiplayer', { create:true });
+      const coop = await mp.getDirectoryHandle('Cooperative', { create:true });
+
+      const missionHandle = await coop.getFileHandle(name + '.Mission', { create:true });
+      let w = await missionHandle.createWritable();
+      await w.write(text); await w.close();
+
+      let wrote = 1;
+      if($('#optLoc').checked){
+        for(const lf of App.localeFiles){
+          // Byte-for-byte: these are UTF-16LE with a BOM and the string
+          // indices inside them still line up with LCName/LCDesc/LCAuthor.
+          const buf = await (await lf.handle.getFile()).arrayBuffer();
+          const h = await coop.getFileHandle(`${name}.${lf.ext}`, { create:true });
+          const lw = await h.createWritable();
+          await lw.write(buf); await lw.close();
+          wrote++;
+        }
+      }
+      App.existing = await readCoopFolder(App.dirHandle);
+      render();
+      toast(`Wrote ${wrote} file${wrote===1?'':'s'} to <code>Multiplayer\\Cooperative\\</code>. ` +
+            `Host a co-op game and <b>${name}</b> will be in the list.`);
+      $('#btnConvert').disabled = false;
+      return;
+    }catch(err){
+      console.error(err);
+      toast('Could not write to the game folder — downloading instead. ' +
+            'Put the files in <code>data\\Multiplayer\\Cooperative\\</code>.', true);
+    }
+  }
+
+  download(name + '.Mission', text, 'text/plain');
+  if($('#optLoc').checked){
+    for(const lf of App.localeFiles){
+      const buf = await (await lf.handle.getFile()).arrayBuffer();
+      download(`${name}.${lf.ext}`, new Blob([buf]));
+    }
+  }
+  $('#btnConvert').disabled = false;
+}
+
+/* ------------------------------ Wiring ------------------------------ */
+
+for(const p of DATA_HINTS){
+  const row = el('div'); row.className = 'path-hint';
+  const s = el('span'); s.textContent = p;
+  const b = el('button'); b.textContent = 'Copy';
+  b.addEventListener('click', ()=> navigator.clipboard.writeText(p).then(
+    ()=> toast('Path copied.'), ()=> toast('Could not copy — select it manually.', true)));
+  row.appendChild(s); row.appendChild(b);
+  $('#pathHints').appendChild(row);
+}
+
+$('#btnFolder').addEventListener('click', pickFolder);
+$('#btnEmptyFolder').addEventListener('click', pickFolder);
+$('#btnFile').addEventListener('click', pickFile);
+$('#btnConvert').addEventListener('click', convert);
+$('#btnPreview').addEventListener('click', ()=>{
+  if(!App.selected.size) return toast('Tick at least one flight first.', true);
+  const { edits } = buildEdits();
+  const lines = edits.slice(0, 40).map(e =>
+    (e.replacement ? e.replacement.trim().replace(/\r\n/g,' ⏎ ') : '(removed) ' + (e.text||'').trim()));
+  toast(`<b>${edits.length} edits</b> to ${App.parsed.planes.length} aircraft and the Options block:<br>` +
+        lines.slice(0,6).map(l=>'<code>'+l+'</code>').join('<br>') +
+        (edits.length > 6 ? `<br>…and ${edits.length-6} more` : ''));
+});
+// Once it's been typed in by hand, stop overwriting it with the matched name.
+$('#outName').addEventListener('input', ()=>{ $('#outName').dataset.auto = '0'; renderPlan(); });
+$('#optLoc').addEventListener('change', renderPlan);
+$('#optShowAll').addEventListener('change', render);
+
+$('#tbStatus').textContent = (typeof window.showDirectoryPicker === 'function')
+  ? 'Chrome/Edge detected — the folder flow can read and write your game files directly.'
+  : 'This browser cannot open folders; single-file mode with downloads will be used.';
+
+render();
+</script>
+</body>
+</html>

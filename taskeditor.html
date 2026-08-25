@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IL-2 Korea — Task Editor Mission Editor</title>
+<meta name="description" content="Offline browser editor for IL-2 Sturmovik: Korea Task Editor mission presets — set time, season and weather outside the game.">
+<style>
+:root{
+  --bg:#26221f;
+  --bg-panel:#2c2823;
+  --bg-toolbar:#1e1b18;
+  --border:rgba(255,255,255,.09);
+  --row-bg:#332e27;
+  --row-bg-hover:#3f382d;
+  --text-bright:#efe8da;
+  --text:#c7bfae;
+  --text-dim:#8a8377;
+  --text-faint:#5f594e;
+  --amber:#d9a44b;
+  --amber-bright:#f0bd63;
+  --warn:#e2a23a;
+  --danger:#c85c4a;
+  --good:#7fae6d;
+  --accent:#c98b34;
+  /* The game's own palette for the weather bar and its pop-ups: a near-black
+     strip with a deep red active state, and light parchment panels above it. */
+  --wx-bar:#141210;
+  --wx-active:#7e1f24;
+  --paper:#f2ede2;
+  --paper-line:#cdc5b6;
+  --ink:#26221d;
+  --ink-dim:#6f6959;
+  --side-red:#b5423c;
+  --side-blue:#4d7fb5;
+  font-size:16.5px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:"Bahnschrift","Segoe UI Semibold","Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+body{background:radial-gradient(ellipse at 50% -10%, #34302a 0%, transparent 60%),var(--bg);min-height:100vh;padding-bottom:70px;}
+h1,h2,h3{font-weight:700;margin:0;}
+button{font-family:inherit;cursor:pointer;}
+::selection{background:var(--amber);color:#221c12;}
+code{font-family:Consolas,Menlo,monospace;font-size:.92em;}
+
+/* ---------- Toolbar ---------- */
+.toolbar{
+  background:var(--bg-toolbar);border-bottom:1px solid var(--border);
+  padding:10px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  position:sticky;top:0;z-index:40;box-shadow:0 4px 14px rgba(0,0,0,.35);
+}
+.app-brand{display:flex;align-items:center;gap:10px;margin-right:8px;text-decoration:none;color:inherit;border-radius:4px;padding:2px 6px;margin-left:-6px;}
+.app-brand:hover{background:rgba(255,255,255,.05);}
+.app-brand:hover .app-brand-text b{color:var(--amber-bright);}
+.app-brand .plane{font-size:20px;filter:saturate(0) brightness(1.6) sepia(1) hue-rotate(-10deg) saturate(3);}
+.app-brand-text{display:flex;flex-direction:column;line-height:1.1;}
+.app-brand-text b{color:var(--text-bright);font-size:14px;letter-spacing:.5px;}
+.app-brand-text span{color:var(--text-faint);font-size:11px;}
+.tb-sep{width:1px;align-self:stretch;background:var(--border);margin:0 4px;}
+.tb-btn{
+  background:#33302a;border:1px solid var(--border);color:var(--text-bright);
+  padding:7px 13px;border-radius:4px;font-size:13.5px;font-weight:600;
+  display:flex;align-items:center;gap:6px;letter-spacing:.3px;
+}
+.tb-btn:hover{background:#3c3931;border-color:rgba(255,255,255,.2);}
+.tb-btn:active{transform:translateY(1px);}
+.tb-btn.primary{background:linear-gradient(#c9902f,#a9761f);border-color:#8a611a;color:#231a0c;}
+.tb-btn.primary:hover{background:linear-gradient(#d69c39,#b58026);}
+.tb-btn.primary:disabled{background:#4a463d;color:var(--text-faint);border-color:var(--border);cursor:not-allowed;}
+.tb-btn:disabled{opacity:.45;cursor:not-allowed;}
+.dirty-dot{width:7px;height:7px;border-radius:50%;background:var(--amber-bright);display:inline-block;box-shadow:0 0 6px var(--amber-bright);}
+.tb-status{font-size:11.5px;color:var(--text-faint);margin-left:auto;display:flex;align-items:center;gap:8px;max-width:46ch;text-align:right;}
+.tb-status b{color:var(--text);}
+
+/* ---------- Layout ---------- */
+.wrap{max-width:1120px;margin:0 auto;padding:26px 24px 0;}
+.page-title{display:flex;align-items:baseline;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
+.page-title h1{font-size:28px;letter-spacing:2px;color:var(--text-bright);text-transform:uppercase;}
+.page-title .sub{margin-left:6px;font-size:13px;color:var(--text-faint);font-weight:400;}
+
+.empty-state{border:1px dashed var(--border);border-radius:8px;padding:40px 32px;text-align:center;color:var(--text-dim);background:rgba(0,0,0,.15);}
+.empty-state h2{color:var(--text-bright);font-size:18px;margin-bottom:10px;letter-spacing:.3px;}
+.empty-state p{font-size:14px;line-height:1.6;max-width:620px;margin:0 auto 14px;}
+.path-hints{display:flex;flex-direction:column;gap:6px;margin:14px auto 18px;max-width:640px;text-align:left;}
+.path-hint{background:#1f1c18;border:1px solid var(--border);border-radius:4px;padding:7px 11px;font-size:11.5px;color:var(--text);font-family:Consolas,Menlo,monospace;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.path-hint span{overflow-wrap:anywhere;}
+.path-hint button{background:none;border:none;color:var(--amber);font-size:11px;font-weight:700;flex-shrink:0;}
+.path-hint button:hover{color:var(--amber-bright);}
+
+.group{margin-bottom:24px;}
+.group > h3{
+  font-size:14.5px;text-transform:uppercase;letter-spacing:2px;color:var(--text-bright);
+  padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:12px;display:flex;align-items:center;gap:10px;
+}
+.group > h3 .hint{font-size:11px;letter-spacing:.3px;text-transform:none;color:var(--text-faint);font-weight:400;margin-left:auto;}
+.ro-badge{
+  font-size:9.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  border:1px solid rgba(127,174,109,.4);background:rgba(127,174,109,.1);color:var(--good);
+  padding:1px 7px;border-radius:3px;
+}
+
+.name-row{display:flex;align-items:center;gap:12px;background:var(--row-bg);border-radius:5px;padding:10px 14px;flex-wrap:wrap;}
+.name-row label{font-size:13px;color:var(--text-dim);white-space:nowrap;letter-spacing:.4px;text-transform:uppercase;}
+.name-row input{
+  flex:1;min-width:200px;background:#231f1b;border:1px solid var(--border);color:var(--text-bright);
+  padding:6px 10px;border-radius:3px;font-size:15px;font-family:inherit;font-weight:700;
+}
+.name-row input:focus{outline:none;border-color:var(--amber);}
+.name-row .mtype{font-size:14.5px;color:var(--text-bright);font-weight:700;display:flex;align-items:center;gap:8px;}
+.info-btn{
+  width:17.5px;height:17.5px;border-radius:50%;border:1px solid var(--text-faint);
+  color:var(--text-faint);background:none;font-size:11px;font-weight:700;line-height:1;
+  display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-style:italic;
+}
+.info-btn:hover{border-color:var(--amber);color:var(--amber);}
+.rawpop{display:flex;flex-direction:column;gap:3px;min-width:190px;}
+.rawpop div{display:flex;justify-content:space-between;gap:22px;font-size:13px;padding:2px 0;}
+.rawpop span{color:var(--ink-dim);}
+.rawpop b{font-family:Consolas,Menlo,monospace;color:var(--ink);}
+
+/* ---------- The weather bar ---------- */
+.wxbar{
+  display:flex;background:var(--wx-bar);border-radius:5px;overflow:hidden;
+  border:1px solid #000;box-shadow:0 6px 20px rgba(0,0,0,.4);
+}
+.wx{
+  flex:1;background:none;border:none;border-right:1px solid rgba(255,255,255,.05);
+  padding:11px 8px 10px;display:flex;align-items:center;gap:9px;justify-content:center;
+  color:inherit;text-align:left;transition:background .12s;min-width:0;
+}
+.wx:last-child{border-right:none;}
+.wx:hover{background:rgba(255,255,255,.06);}
+.wx.open{background:var(--wx-active);}
+.wx-ico{font-size:17px;color:var(--text-dim);line-height:1;flex-shrink:0;}
+.wx.open .wx-ico{color:#f0d5d2;}
+.wx-txt{display:flex;flex-direction:column;line-height:1.25;min-width:0;}
+.wx-txt b{font-size:10px;letter-spacing:1.1px;text-transform:uppercase;color:var(--text-faint);font-weight:600;}
+.wx-txt i{font-size:14px;font-style:normal;color:var(--text-bright);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wx.open .wx-txt b{color:#e8b9b6;}
+.wx.open .wx-txt i{color:#fff;}
+@media (max-width:900px){
+  .wxbar{flex-wrap:wrap;}
+  .wx{flex:1 1 33%;border-bottom:1px solid rgba(255,255,255,.05);}
+}
+
+/* ---------- Parchment pop-up ---------- */
+.pop{
+  position:absolute;z-index:60;background:var(--paper);color:var(--ink);
+  border-radius:3px;box-shadow:0 14px 40px rgba(0,0,0,.55);
+  padding:16px 20px 18px;min-width:260px;display:none;
+}
+.pop.open{display:block;}
+.pop h4{
+  font-size:11.5px;letter-spacing:2px;text-transform:uppercase;text-align:center;
+  color:var(--ink-dim);font-weight:600;margin-bottom:12px;
+}
+.pop-note{font-size:10.5px;color:var(--ink-dim);text-align:center;margin-top:10px;line-height:1.4;}
+
+.pop-list{display:flex;flex-direction:column;min-width:190px;}
+.pop-opt{
+  background:none;border:1px solid transparent;color:var(--ink);
+  padding:7px 16px;font-size:14.5px;text-align:left;border-radius:2px;
+}
+.pop-opt:hover{background:rgba(0,0,0,.06);}
+.pop-opt.sel{border-color:var(--ink);font-weight:700;}
+
+.pop-seasons{display:flex;gap:6px;}
+.pop-season{
+  background:none;border:1px solid transparent;border-radius:2px;color:var(--ink);
+  padding:12px 14px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;min-width:78px;
+}
+.pop-season:hover{background:rgba(0,0,0,.06);}
+.pop-season.sel{border-color:var(--ink);background:#fff;}
+.pop-season .s-ico{font-size:22px;line-height:1;}
+.pop-season .s-name{font-size:10.5px;letter-spacing:1px;text-transform:uppercase;font-weight:600;}
+
+.pop-slider{display:flex;flex-direction:column;gap:5px;min-width:400px;}
+.pop-slider .big{font-size:19px;font-weight:700;text-align:center;color:var(--ink);letter-spacing:.5px;}
+.pop-slider .lead{display:flex;align-items:center;gap:14px;}
+.pop-slider .lead .val{font-size:19px;font-weight:700;color:var(--ink);min-width:74px;text-align:right;}
+.pop-slider .lead .val small{display:block;font-size:10px;font-weight:400;color:var(--ink-dim);letter-spacing:1px;}
+.pop-ticks{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink-dim);padding:0 2px;}
+.pop-sub{font-size:10.5px;letter-spacing:2px;text-transform:uppercase;color:var(--ink-dim);text-align:center;margin-top:6px;}
+
+.pop input[type=range]{-webkit-appearance:none;appearance:none;background:none;width:100%;height:18px;margin:0;}
+.pop input[type=range]::-webkit-slider-runnable-track{height:1px;background:var(--ink);}
+.pop input[type=range]::-moz-range-track{height:1px;background:var(--ink);}
+.pop input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:0;height:0;margin-top:-9px;
+  border-left:7px solid transparent;border-right:7px solid transparent;border-top:10px solid var(--ink);cursor:pointer;
+}
+.pop input[type=range]::-moz-range-thumb{
+  width:0;height:0;border:none;
+  border-left:7px solid transparent;border-right:7px solid transparent;border-top:10px solid var(--ink);cursor:pointer;
+}
+.pop input[type=range]:focus{outline:none;}
+
+/* ---------- Read-only formations ---------- */
+/* Two columns that never interleave. Which side an aircraft is on and which
+   nation it belongs to are separate facts, so the column carries the side and
+   each aircraft carries its own nation. */
+.forms{display:grid;grid-template-columns:1fr 1fr;gap:0 22px;}
+@media (max-width:860px){.forms{grid-template-columns:1fr;gap:22px 0;}}
+.fside{border-top:2px solid var(--side-red);padding-top:0;}
+.fside.enemy{border-top-color:var(--side-blue);}
+.fside-head{
+  font-size:11px;letter-spacing:2.2px;text-transform:uppercase;font-weight:700;
+  padding:6px 10px 7px;background:rgba(181,66,60,.16);color:#f0c3bf;margin-bottom:10px;
+}
+.fside.enemy .fside-head{background:rgba(77,127,181,.16);color:#c6dcf2;}
+.fside-empty{font-size:12.5px;color:var(--text-faint);padding:4px 2px 10px;}
+
+.fcard{background:#211e1a;border:1px solid #000;border-radius:3px;padding:12px 15px 13px;margin-bottom:10px;}
+.fcard h4{font-size:10.5px;letter-spacing:1.6px;text-transform:uppercase;color:var(--text-faint);font-weight:600;margin-bottom:9px;}
+.frow{display:flex;align-items:center;gap:10px;margin-bottom:7px;}
+.frow .glyph{font-size:16px;color:var(--text-dim);width:17px;text-align:center;flex-shrink:0;}
+.frow .ac{font-size:16.5px;color:var(--text-bright);font-weight:700;}
+.frow .nat{
+  font-size:10px;letter-spacing:.8px;font-weight:700;text-transform:uppercase;
+  border:1px solid;border-radius:3px;padding:1px 6px;white-space:nowrap;
+}
+.frow .nat-red{color:#e79a94;border-color:rgba(181,66,60,.5);background:rgba(181,66,60,.14);}
+.frow .nat-blue{color:#a8c8ea;border-color:rgba(77,127,181,.5);background:rgba(77,127,181,.14);}
+.frow .nat-auto{color:var(--text-faint);border-color:var(--border);}
+.frow .cs{font-size:11.5px;color:var(--text-dim);font-family:Consolas,Menlo,monospace;}
+.frow .ai{font-size:13px;color:var(--amber);letter-spacing:1px;margin-left:auto;}
+.frow .qty{font-size:16.5px;color:var(--text-bright);font-weight:700;min-width:20px;text-align:right;}
+.fmeta{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text-dim);border-top:1px solid rgba(255,255,255,.07);padding-top:8px;flex-wrap:wrap;}
+.fmeta b{color:var(--text-bright);font-weight:700;}
+.fmeta .sep{color:var(--text-faint);}
+
+/* ---------- Advanced, in columns ---------- */
+.advtable{width:100%;border-collapse:collapse;}
+.advtable th,.advtable td{padding:7px 12px;font-size:13px;text-align:right;border-bottom:1px solid rgba(255,255,255,.05);}
+.advtable th:first-child,.advtable td:first-child{text-align:left;}
+.advtable thead th{
+  font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-faint);
+  font-weight:700;border-bottom:1px solid var(--border);
+}
+.advtable thead th small{display:block;font-weight:400;letter-spacing:.2px;text-transform:none;font-size:10.5px;color:var(--text-dim);margin-top:2px;}
+.advtable td{color:var(--text-bright);font-family:Consolas,Menlo,monospace;}
+.advtable td:first-child{color:var(--text);font-family:inherit;border-bottom:1px dotted var(--text-faint);}
+.advtable tbody tr:hover td{background:var(--row-bg-hover);}
+.advmission{display:flex;flex-wrap:wrap;gap:0 26px;background:var(--row-bg);border-radius:4px;padding:9px 14px;margin-bottom:12px;}
+.advmission div{font-size:12.5px;color:var(--text-dim);padding:2px 0;}
+.advmission div b{color:var(--text-bright);margin-left:6px;font-family:Consolas,Menlo,monospace;}
+
+.adv-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.adv-toggle{
+  background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;
+  padding:5px 11px;font-size:11.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+}
+.adv-toggle:hover{color:var(--text-bright);border-color:rgba(255,255,255,.2);}
+.adv-panel{display:none;}
+.adv-panel.open{display:block;}
+
+.note{font-size:12px;line-height:1.55;color:var(--text-dim);background:rgba(217,164,75,.07);border-left:2px solid var(--accent);padding:8px 12px;border-radius:0 4px 4px 0;margin:12px 0 0;}
+.note b{color:var(--amber);}
+
+/* ---------- Modal / toast ---------- */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:70;display:none;align-items:center;justify-content:center;padding:24px;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--bg-panel);border:1px solid var(--border);border-radius:8px;max-width:820px;width:100%;max-height:84vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.55);}
+.modal-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-head h3{font-size:15px;color:var(--text-bright);letter-spacing:1px;text-transform:uppercase;}
+.modal-close{background:none;border:none;color:var(--text-faint);font-size:22px;line-height:1;}
+.modal-close:hover{color:var(--text-bright);}
+.modal-body{padding:16px 18px;overflow:auto;}
+.raw-view{font-family:Consolas,Menlo,monospace;font-size:11.5px;line-height:1.6;color:var(--text);white-space:pre-wrap;overflow-wrap:anywhere;background:#1b1815;border:1px solid var(--border);border-radius:4px;padding:12px;}
+#toast{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+  background:#1b1815;border:1px solid var(--border);border-left:3px solid var(--good);
+  color:var(--text-bright);padding:11px 18px;border-radius:5px;font-size:13.5px;
+  box-shadow:0 10px 30px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:.2s;z-index:80;max-width:min(90vw,620px);
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+#toast.err{border-left-color:var(--danger);}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <a class="app-brand" href="index.html" title="All IL-2 Korea tools">
+    <span class="plane">✈</span>
+    <span class="app-brand-text"><b>IL-2 KOREA TOOLS</b><span>Task Editor Missions</span></span>
+  </a>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="btnOpen">＋ Open mission…</button>
+  <button class="tb-btn primary" id="btnSave" disabled>💾 Save</button>
+  <button class="tb-btn" id="btnSaveAs" disabled>Save As…</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="btnRaw" disabled>&lt;/&gt; Raw JSON</button>
+  <button class="tb-btn" id="btnRefresh" disabled title="Re-read this file from disk — use this if you changed it in-game since opening it here">↻ Refresh</button>
+  <div class="tb-status" id="tbStatus"></div>
+</div>
+
+<div class="wrap">
+  <div class="page-title">
+    <h1>Task Editor Missions</h1>
+    <span class="sub" id="fileSub">No mission loaded</span>
+  </div>
+
+  <div class="empty-state" id="emptyState">
+    <h2>Open a saved Task Editor mission to begin</h2>
+    <p>
+      Build a mission in the game's <b>Task Editor</b> and save it, then open the
+      <code>.json</code> it writes. Set the time, season and weather here — laid out
+      the way the game lays them out — and load the file back in the Task Editor as normal.
+    </p>
+    <div class="path-hints" id="pathHints"></div>
+    <button class="tb-btn primary" id="btnEmptyOpen" style="margin:0 auto;">＋ Open mission…</button>
+  </div>
+
+  <div id="mainContent" style="display:none;">
+
+    <div class="group">
+      <h3>Mission</h3>
+      <div class="name-row">
+        <label for="missionName">Name</label>
+        <input type="text" id="missionName" placeholder="Shown in the Task Editor list">
+        <div class="mtype" id="missionType"></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h3>Time &amp; weather <span class="hint">Click any setting to change it</span></h3>
+      <div class="wxbar" id="wxbar"></div>
+      <div class="note" id="wxNote" style="display:none;"></div>
+    </div>
+
+    <div class="group">
+      <h3>Formations <span class="ro-badge">Read only</span>
+        <span class="hint">What the mission is built around</span></h3>
+      <div class="forms" id="forms"></div>
+    </div>
+
+    <div class="adv-head">
+      <button class="adv-toggle" id="advToggle">▸ Advanced — stored values, unverified</button>
+      <span class="ro-badge">Read only</span>
+    </div>
+    <div class="adv-panel" id="advPanel">
+      <div class="advmission" id="advMission"></div>
+      <table class="advtable"><thead id="advHead"></thead><tbody id="advBody"></tbody></table>
+      <div class="note">
+        One column per formation group, in the order the file stores them. These are
+        written back <b>exactly as loaded</b> — the tables that give them meaning live
+        inside the packed <code>.gtp</code> archives, so there is nothing here worth
+        editing blind.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="pop" id="pop"></div>
+
+<div class="modal-overlay" id="rawModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Raw JSON — exactly what Save writes</h3>
+      <button class="modal-close" data-close="rawModal">×</button>
+    </div>
+    <div class="modal-body"><div class="raw-view" id="rawViewText"></div></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+/* ====================================================================
+   Reference tables.
+
+   Every name here is one the game itself shows, read either out of its
+   plain-text data files or off its own screens. Nothing is invented: a
+   value we cannot name is shown as its number instead.
+   ==================================================================== */
+
+// data/GUI/DefaultCountryNames.eng
+const COUNTRY_NAMES = { '-1':'Auto', 0:'Neutral', 501:'USSR', 502:'PRC', 503:'DPRK', 601:'USA' };
+
+// data/GUI/DefaultCallsigns.eng
+const CALLSIGN_NAMES = [
+  'None','Red','Blue','Green','Yellow','White','Black','Eagle','Raven','Hawk','Kite',
+  'Falcon','Vulture','Owl','Seagull','Albatros','Crane','Heron',
+  'Granite','Sapphire','Jasper','Agate','Opal','Topaz','Zircon','Diamond','Typhoon',
+  'Storm','Squall','Snowstorm','Blizzard','Gale','Thunderstorm','Thunder','Lightning','Cyclone',
+  'Able','Baker','Charlie','Dog','Easy','Fox','George','How','Item','Jig','King','Love',
+  'Mike','Nan','Oboe','Peter','Queen','Roger','Sugar','Tare','Uncle','Victor','William',
+  'Xray','Yoke','Zebra',
+];
+
+// The Task Editor's aircraft picker, plus the ones only the generator brings in.
+const PLANE_LABELS = {
+  mig15bis:'MiG-15bis', la11:'La-11', yak9p:'Yak-9P', il10:'IL-10',
+  f80c10:'F-80C-10', f84e:'F-84E', f86a5:'F-86A-5', f51d:'F-51D',
+  b29:'B-29', c47b:'C-47B', li2t:'Li-2T', tu2:'Tu-2', p51d15:'P-51D-15', yak9s1:'Yak-9S',
+};
+const RED_COUNTRIES = [501, 502, 503];
+
+// "PILOT AI LEVEL" in game. Ace is confirmed as 4 by a saved mission showing Ace
+// selected while storing aiLevel 4. The menu also offers Random, whose stored
+// value has not been identified.
+// -1 is Random, the menu's fifth entry — same convention as cloud type, and seen
+// on a saved Skirmish whose main formation the game shows with a rank glyph.
+const AI_LEVELS = { '-1':'Random', 1:'Novice', 2:'Average', 3:'Veteran', 4:'Ace' };
+const AI_GLYPHS = { '-1':'✧', 1:'⌃', 2:'⌃⌃', 3:'⌃⌃⌃', 4:'◆' };
+
+// The opposing formation's APPROACH menu, in the game's order. 1 is confirmed by
+// a saved mission the game shows as FACE TO FACE; the rest follow from the menu.
+// 0 appears on friendly formations, which have no approach of their own.
+const APPROACH = { 1:'Face to face', 2:'Pursuit', 3:'Escape', 4:'Aside', 5:'Scramble' };
+
+// A start altitude of 0 is not "ground level" — it means starting on the runway.
+const altitudeLabel = a => Number(a) === 0 ? 'On runway' : a + ' m';
+
+// The mission type menu, nested as the game nests it. subType stores the leaf
+// name in snake_case — "intercept_bombers" is confirmed, the rest follow suit.
+const MISSION_SUBTYPES = [
+  ['', [['free_flight','Free Flight'], ['duel','Duel'], ['skirmish','Skirmish']]],
+  ['Transfer', [['group_flight','Group Flight'], ['fighter_transfer','Fighter Transfer']]],
+  ['Intercept', [['intercept_bombers','Intercept Bombers'],
+                 ['intercept_bombers_at_night','Intercept Bombers at Night'],
+                 ['intercept_heavy_bombers','Intercept Heavy Bombers'],
+                 ['intercept_heavy_bombers_at_night','Intercept Heavy Bombers at Night']]],
+  ['Patrol', [['area_patrol','Area patrol'], ['armed_reconnaissance','Armed Reconnaissance']]],
+  ['Escort', [['escort_transports','Escort Transports'], ['escort_heavy_bombers','Escort Heavy Bombers']]],
+  ['Ground Attack', [['attack_vehicle_column','Attack Vehicle Column'],
+                     ['attack_armored_column','Attack Armored Column'],
+                     ['attack_artillery','Attack Artillery'], ['attack_frontline','Attack Frontline'],
+                     ['attack_railway_junction','Attack Railway Junction'],
+                     ['attack_airfield','Attack Airfield'], ['attack_troops','Attack Troops'],
+                     ['traffic_interdiction','Traffic Interdiction'],
+                     ['close_air_support','Close Air Support']]],
+  ['Bombing', [['bomb_supply_dump','Bomb Supply Dump'], ['bomb_bridge','Bomb Bridge'],
+               ['bomb_dam','Bomb Dam']]],
+];
+
+// Only 701 has been seen paired with a named screen — a saved mission the Task
+// Editor titles SKIRMISH. Free Flight and Duel also store subType "default" but
+// their ids are unknown, so they fall through to their number.
+const MISSION_TYPE_IDS = { 701:'Skirmish' };
+
+const CLOUD_COVER = ['Clear','Light','Medium','Heavy','Overcast'];
+const TURBULENCE  = ['None','Weak','Moderate','Strong','Overwhelming'];
+// Random is -1, not a position in the list: two saved missions showing Random
+// both store -1, while a mission storing 0 displayed as Cumulus humilis — the
+// first named entry. So the ten real skies run 0-9 and the menu simply puts
+// Random at the top. The generator then writes the chosen index into the
+// mission's CloudConfig path, "summer\00_Clear_00\sky.ini" being cover 0,
+// variant 0.
+const CLOUD_TYPES = [
+  [-1,'Random'],
+  [0,'Cumulus humilis'], [1,'Cumulus mediocris'], [2,'Cumulus congestus'],
+  [3,'Stratocumulus radiatus'], [4,'Stratocumulus cumuliformis'], [5,'Stratocumulus castellanus'],
+  [6,'Stratocumulus + Altostratus'], [7,'Stratocumulus + Altocumulus'],
+  [8,'Cumulonimbus 1'], [9,'Cumulonimbus 2'],
+];
+const cloudTypeName = v => (CLOUD_TYPES.find(([x]) => x === v) || [null, String(v)])[1];
+// Five LANDSCAPE_Korea_* prefixes, five seasons in game. Summer is confirmed
+// directly; "sw" is the one left over for Off Season.
+const SEASONS = [
+  ['wi','Winter','❄'], ['sw','Off Season','☼'], ['sp','Spring','✽'],
+  ['su','Summer','☀'], ['au','Autumn','❦'],
+];
+
+// The Task Editor shows wind direction as the reciprocal of what the file
+// stores: a mission holding 330 displays as 150°.
+const windToUi   = d => ((Number(d) + 180) % 360 + 360) % 360;
+const windFromUi = d => ((Number(d) + 180) % 360 + 360) % 360;
+
+const PRESET_PATHS = [
+  'C:\\Program Files (x86)\\Steam\\steamapps\\common\\IL2Series\\data\\NSData\\UserData\\QuickMission\\Presets',
+  'C:\\Steam\\steamapps\\common\\IL2Series\\data\\NSData\\UserData\\QuickMission\\Presets',
+  'D:\\Steam\\steamapps\\common\\IL2Series\\data\\NSData\\UserData\\QuickMission\\Presets',
+];
+
+/* ------------------------------ State ------------------------------ */
+
+const App = {
+  data:null,        // the whole parsed file, mutated in place so unknown keys survive
+  handle:null,
+  fileName:null,
+  mode:null,        // 'fsapi' | 'fallback'
+  dirty:false,
+  openPop:null,     // which weather setting is showing its pop-up
+  fsApiSupported:(typeof window.showOpenFilePicker === 'function'),
+};
+
+const $  = s => document.querySelector(s);
+const el = t => document.createElement(t);
+function q(){ return App.data && App.data.qmission; }
+function env(){ return q().envConfig; }
+
+let toastTimer = null;
+function toast(msg, isErr){
+  const t = $('#toast');
+  t.innerHTML = msg;
+  t.className = 'show' + (isErr ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ t.className = ''; }, isErr ? 6500 : 3800);
+}
+function markDirty(){ App.dirty = true; renderToolbar(); }
+
+const pad2 = n => String(n).padStart(2,'0');
+const toMin  = t => { const [h,m] = String(t||'0:0').split(':').map(Number); return (h||0)*60 + (m||0); };
+const toHHMM = v => pad2(Math.floor(v/60) % 25) + ':' + pad2(v % 60);
+const planeKey = p => String(p||'').split(/[\\/]/).pop().replace(/\.txt$/i,'').toLowerCase();
+const planeName = p => PLANE_LABELS[planeKey(p)] || planeKey(p) || 'unknown';
+
+/* ====================================================================
+   The weather bar.
+
+   The Task Editor puts every environment setting in one strip along the
+   bottom of the screen, each showing its current value, and opens a small
+   parchment panel above whichever you click. This is that, because a row
+   of dropdowns bears no resemblance to the thing being edited.
+   ==================================================================== */
+
+const WX = [
+  { key:'time',   icon:'◷', label:'Time',           value:()=> q().time || '—' },
+  { key:'season', icon:'☀', label:'Season',         value:()=> (SEASONS.find(s=>s[0]===env().season)||[,'—'])[1] },
+  { key:'wind',   icon:'↝', label:'Wind',           value:()=> windToUi(env().windDir) + '° ' + env().windPower + ' m/s' },
+  { key:'turb',   icon:'∿', label:'Turbulence',     value:()=> TURBULENCE[env().turbulence] ?? env().turbulence },
+  { key:'cover',  icon:'◐', label:'Cover',          value:()=> CLOUD_COVER[env().cloudCover] ?? env().cloudCover },
+  { key:'calt',   icon:'☁', label:'Cloud altitude', value:()=> env().cloudLevel + ' m' },
+  { key:'ctype',  icon:'▤', label:'Cloud type',     value:()=> cloudTypeName(env().cloudVariant) },
+  { key:'prec',   icon:'⁘', label:'Precipitation',  value:()=> env().precLevel === 0 ? 'None' : String(env().precLevel) },
+  { key:'haze',   icon:'◎', label:'Haze',           value:()=> env().haze === 0 ? 'None' : String(env().haze) },
+  { key:'fog',    icon:'≡', label:'Fog',            value:()=> env().fog ? 'Yes' : 'No' },
+];
+
+function renderWxBar(){
+  const bar = $('#wxbar');
+  bar.innerHTML = '';
+  for(const item of WX){
+    const b = el('button');
+    b.className = 'wx' + (App.openPop === item.key ? ' open' : '');
+    b.dataset.key = item.key;
+    b.innerHTML = `<span class="wx-ico">${item.icon}</span>` +
+      `<span class="wx-txt"><b>${item.label}</b><i>${item.value()}</i></span>`;
+    b.addEventListener('click', e => { e.stopPropagation(); togglePop(item.key, b); });
+    bar.appendChild(b);
+  }
+
+  // The game states this limitation on the precipitation panel itself.
+  const n = $('#wxNote');
+  if(env().precLevel > 0 && env().cloudCover < 3){
+    n.style.display = '';
+    n.innerHTML = '<b>Precipitation needs cover.</b> The game only applies it with Heavy or ' +
+      'Overcast cover, and this mission is set to <b>' + (CLOUD_COVER[env().cloudCover] || env().cloudCover) +
+      '</b>, so a level of ' + env().precLevel + ' will most likely do nothing.';
+  } else {
+    n.style.display = 'none';
+  }
+}
+
+/* --- pop-up builders, one per setting --- */
+
+function popList(title, options, current, onPick, note){
+  const wrap = el('div');
+  wrap.innerHTML = `<h4>${title}</h4>`;
+  const list = el('div'); list.className = 'pop-list';
+  options.forEach(([val, name]) => {
+    const b = el('button');
+    b.className = 'pop-opt' + (String(val) === String(current) ? ' sel' : '');
+    b.textContent = name;
+    b.addEventListener('click', ()=>{ onPick(val); afterPopEdit(); });
+    list.appendChild(b);
+  });
+  wrap.appendChild(list);
+  if(note){ const p = el('div'); p.className = 'pop-note'; p.textContent = note; wrap.appendChild(p); }
+  return wrap;
+}
+
+function popSlider(title, opts){
+  const wrap = el('div');
+  wrap.innerHTML = `<h4>${title}</h4>`;
+  const box = el('div'); box.className = 'pop-slider';
+  const big = el('div'); big.className = 'big';
+  const inp = el('input');
+  inp.type = 'range'; inp.min = opts.min; inp.max = opts.max; inp.step = opts.step || 1;
+  inp.value = opts.get();
+  const fmt = opts.format || (v => String(v));
+  big.textContent = fmt(Number(inp.value));
+  inp.addEventListener('input', ()=> big.textContent = fmt(Number(inp.value)));
+  inp.addEventListener('change', ()=>{ opts.set(Number(inp.value)); afterPopEdit(true); });
+  box.appendChild(big);
+  box.appendChild(inp);
+  if(opts.ticks){
+    const t = el('div'); t.className = 'pop-ticks';
+    t.innerHTML = opts.ticks.map(x => `<span>${x}</span>`).join('');
+    box.appendChild(t);
+  }
+  wrap.appendChild(box);
+  if(opts.note){ const p = el('div'); p.className = 'pop-note'; p.textContent = opts.note; wrap.appendChild(p); }
+  return wrap;
+}
+
+function popSeason(){
+  const wrap = el('div');
+  wrap.innerHTML = '<h4>Season</h4>';
+  const row = el('div'); row.className = 'pop-seasons';
+  for(const [code, name, icon] of SEASONS){
+    const b = el('button');
+    b.className = 'pop-season' + (env().season === code ? ' sel' : '');
+    b.innerHTML = `<span class="s-ico">${icon}</span><span class="s-name">${name}</span>`;
+    b.addEventListener('click', ()=>{ env().season = code; afterPopEdit(); });
+    row.appendChild(b);
+  }
+  wrap.appendChild(row);
+  return wrap;
+}
+
+function popWind(){
+  const wrap = el('div');
+  const box = el('div'); box.className = 'pop-slider';
+
+  const mk = (label, unit, get, set, min, max, step, ticks) => {
+    const head = el('div'); head.className = 'pop-sub'; head.textContent = label;
+    const lead = el('div'); lead.className = 'lead';
+    const val = el('div'); val.className = 'val';
+    const inp = el('input');
+    inp.type='range'; inp.min=min; inp.max=max; inp.step=step; inp.value=get();
+    const show = v => val.innerHTML = v + `<small>${unit}</small>`;
+    show(get());
+    inp.addEventListener('input', ()=> show(Number(inp.value)));
+    inp.addEventListener('change', ()=>{ set(Number(inp.value)); afterPopEdit(true); });
+    lead.appendChild(val); lead.appendChild(inp);
+    const t = el('div'); t.className = 'pop-ticks';
+    t.style.paddingLeft = '88px';
+    t.innerHTML = ticks.map(x => `<span>${x}</span>`).join('');
+    box.appendChild(head); box.appendChild(lead); box.appendChild(t);
+  };
+
+  mk('Wind speed', 'm/s', ()=>env().windPower, v=>{ env().windPower = v; },
+     0, 12, 1, [0,3,6,9,12]);
+  mk('Wind direction', '°', ()=>windToUi(env().windDir), v=>{ env().windDir = windFromUi(v); },
+     0, 360, 5, [0,90,180,270,360]);
+
+  wrap.appendChild(box);
+  return wrap;
+}
+
+function buildPop(key){
+  const e = env();
+  switch(key){
+    case 'time':   return popSlider('Time', {
+      min:0, max:1440, step:10, get:()=>toMin(q().time), set:v=>{ q().time = toHHMM(v); },
+      format:toHHMM, ticks:['00:00','03:00','06:00','09:00','12:00','15:00','18:00','21:00','24:00'] });
+    case 'season': return popSeason();
+    case 'wind':   return popWind();
+    case 'turb':   return popList('Turbulence', TURBULENCE.map((n,i)=>[i,n]), e.turbulence,
+                     v=>{ e.turbulence = Number(v); });
+    case 'cover':  return popList('Cover', CLOUD_COVER.map((n,i)=>[i,n]), e.cloudCover,
+                     v=>{ e.cloudCover = Number(v); });
+    case 'calt':   return popSlider('Cloud altitude', {
+      min:500, max:3000, step:500, get:()=>e.cloudLevel, set:v=>{ e.cloudLevel = v; },
+      format:v=>v + ' M', ticks:[500,1000,1500,2000,2500,3000] });
+    case 'ctype':  return popList('Cloud type', CLOUD_TYPES, e.cloudVariant,
+                     v=>{ e.cloudVariant = Number(v); });
+    case 'prec':   return popSlider('Precipitation', {
+      min:0, max:10, step:1, get:()=>e.precLevel, set:v=>{ e.precLevel = v; },
+      ticks:[0,1,2,3,4,5,6,7,8,9,10],
+      note:'Only available with heavy and overcast cloud cover' });
+    case 'haze':   return popSlider('Haze', {
+      min:0, max:10, step:1, get:()=>e.haze, set:v=>{ e.haze = v; }, ticks:[0,1,2,3,4,5,6,7,8,9,10] });
+    case 'fog':    return popList('Fog', [[1,'Yes'],[0,'No']], e.fog ? 1 : 0,
+                     v=>{ e.fog = (Number(v) === 1); });
+  }
+}
+
+function togglePop(key, anchor){
+  if(App.openPop === key) return closePop();
+  App.openPop = key;
+  const pop = $('#pop');
+  pop.innerHTML = '';
+  pop.appendChild(buildPop(key));
+  pop.classList.add('open');
+  placePop(anchor);
+  renderWxBar();
+}
+
+// Sit above the anchor, centred on it, nudged back inside the viewport. A long
+// list — cloud type has eleven entries — can be taller than the space above, so
+// drop it below rather than letting the top get clipped, and cap its height if
+// neither side has room.
+function placePop(anchor){
+  const pop = $('#pop');
+  const a = anchor.getBoundingClientRect();
+  const vh = document.documentElement.clientHeight;
+  const vw = document.documentElement.clientWidth;
+  pop.style.maxHeight = '';
+  let h = pop.offsetHeight;
+  const spaceAbove = a.top - 16, spaceBelow = vh - a.bottom - 16;
+
+  let below = false;
+  if(h > spaceAbove){
+    if(spaceBelow >= h || spaceBelow > spaceAbove) below = true;
+  }
+  const room = below ? spaceBelow : spaceAbove;
+  if(h > room){
+    pop.style.maxHeight = Math.max(160, room) + 'px';
+    pop.style.overflowY = 'auto';
+    h = pop.offsetHeight;
+  } else {
+    pop.style.overflowY = '';
+  }
+
+  const w = pop.offsetWidth;
+  let left = a.left + window.scrollX + a.width / 2 - w / 2;
+  left = Math.max(10, Math.min(left, window.scrollX + vw - w - 10));
+  pop.style.left = left + 'px';
+  pop.style.top  = (below ? a.bottom + 8 : a.top - h - 8) + window.scrollY + 'px';
+}
+function closePop(){
+  App.openPop = null;
+  $('#pop').classList.remove('open');
+  renderWxBar();
+}
+// `keep` is for sliders, which fire repeatedly — leave the panel open so the
+// value can be dragged rather than snapping shut on the first change.
+function afterPopEdit(keep){
+  markDirty();
+  const key = App.openPop, anchor = $(`.wx[data-key="${key}"]`);
+  renderWxBar();
+  if(keep && key){
+    const a = $(`.wx[data-key="${key}"]`);
+    if(a){ App.openPop = key; a.classList.add('open'); }
+  } else {
+    closePop();
+  }
+}
+
+// Reuses the parchment panel to show the raw values behind a friendly name,
+// so a number the game never displays is one click away rather than on screen.
+function showRawPop(anchor, pairs){
+  App.openPop = null;
+  const pop = $('#pop');
+  pop.innerHTML = '';
+  const wrap = el('div');
+  wrap.innerHTML = '<h4>Stored values</h4>';
+  const list = el('div');
+  list.className = 'rawpop';
+  list.innerHTML = pairs
+    .filter(([,v]) => v !== undefined && v !== null && v !== '')
+    .map(([k,v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
+  wrap.appendChild(list);
+  pop.appendChild(wrap);
+  pop.classList.add('open');
+  placePop(anchor);
+}
+
+/* ------------------------- Read-only rendering ------------------------- */
+
+function renderMission(){
+  const m = q();
+  $('#missionName').value = m.internalName || '';
+  // The three mission types with no submenu — Free Flight, Duel, Skirmish —
+  // store subType "default" and are told apart by missionType instead. 701 is
+  // Skirmish, confirmed against a saved mission; the other two ids have not
+  // been seen, so they are reported as their number rather than guessed at.
+  const hit = MISSION_SUBTYPES.flatMap(([,l])=>l).find(([v])=> v === m.subType);
+  const title = hit ? hit[1]
+    : m.subType === 'default' ? (MISSION_TYPE_IDS[m.missionType] || 'Mission type ' + m.missionType)
+    : (m.subType || 'Unknown type');
+
+  // Show the name and nothing else. The stored values behind it are available
+  // on the info button rather than cluttering the line with numbers.
+  const box = $('#missionType');
+  box.innerHTML = '';
+  const label = el('span');
+  label.textContent = title;
+  box.appendChild(label);
+
+  const info = el('button');
+  info.className = 'info-btn';
+  info.textContent = 'i';
+  info.title = `subType: ${m.subType}\nmissionType: ${m.missionType}`;
+  info.addEventListener('click', e => {
+    e.stopPropagation();
+    showRawPop(info, [['subType', m.subType], ['missionType', m.missionType],
+                      ['settingId', m.settingId], ['version', m.version]]);
+  });
+  box.appendChild(info);
+}
+
+function formationTitle(side, i, total){
+  if(side === 'friendly') return i === 0 ? 'Main formation' : 'Support formation ' + (i + 1);
+  if(i === 0) return total > 1 ? 'Attack formation' : 'Main formation';
+  if(i === 1) return 'Cover formation';
+  return 'Formation ' + (i + 1);
+}
+
+// A formation is one card holding however many aircraft groups it has, sharing a
+// single start altitude — which is how the game draws it, both aircraft under one
+// MAIN FORMATION heading with one START beneath.
+function renderFormationCard(f, i, side, total){
+  const card = el('div');
+  card.className = 'fcard ' + side;
+  let html = `<h4>${formationTitle(side, i, total)}</h4>`;
+
+  for(const g of (f.groups || [])){
+    const w = g.worldObjectSetup || {};
+    const country = w.country === undefined ? -1 : w.country;
+    const ai = AI_LEVELS[g.aiLevel] || (g.aiLevel === -1 ? 'Random' : 'level ' + g.aiLevel);
+    const cs = w.callsign > 0 ? (CALLSIGN_NAMES[w.callsign] || w.callsign) : null;
+    // The nation is shown as a tinted word rather than by colouring the card:
+    // a formation's side and its aircraft's nationality are different things,
+    // and a Skirmish will happily put DPRK aircraft on the opposing side.
+    const natClass = country === -1 ? 'nat-auto' : (RED_COUNTRIES.includes(country) ? 'nat-red' : 'nat-blue');
+    html +=
+      `<div class="frow">` +
+        `<span class="glyph">✈</span>` +
+        `<span class="ac">${planeName(w.objectCfg)}</span>` +
+        `<span class="nat ${natClass}">${COUNTRY_NAMES[country] || country}</span>` +
+        (cs ? `<span class="cs">${cs}</span>` : '') +
+        `<span class="ai" title="Pilot AI level: ${ai}">${AI_GLYPHS[g.aiLevel] || (g.aiLevel === -1 ? '⁇' : g.aiLevel)}</span>` +
+        `<span class="qty">${g.quantity}</span>` +
+      `</div>`;
+  }
+
+  // START always; the game shows DISTANCE and APPROACH on the opposing
+  // formation only, and this file has them only there too.
+  html += `<div class="fmeta"><span class="glyph">⇥</span><span>Start</span><b>${altitudeLabel(f.altitude)}</b>`;
+  if(side === 'enemy'){
+    if(f.distance) html += `<span class="sep">·</span><span>Distance</span><b>${f.distance} m</b>`;
+    if(f.approach !== undefined && f.approach !== 0){
+      html += `<span class="sep">·</span><span>Approach</span><b>${APPROACH[f.approach] || f.approach}</b>`;
+    }
+  }
+  html += '</div>';
+  card.innerHTML = html;
+  return card;
+}
+
+function renderForms(){
+  const m = q();
+  const box = $('#forms');
+  box.innerHTML = '';
+
+  for(const [side, heading] of [['friendly','Friendly'], ['enemy','Enemy']]){
+    const arr = m[side] || [];
+    const col = el('div');
+    col.className = 'fside ' + side;
+    col.innerHTML = `<div class="fside-head">${heading}</div>`;
+    if(!arr.length){
+      const p = el('div');
+      p.className = 'fside-empty';
+      p.textContent = 'None — the generator fills this side in.';
+      col.appendChild(p);
+    } else {
+      arr.forEach((f, i) => col.appendChild(renderFormationCard(f, i, side, arr.length)));
+    }
+    box.appendChild(col);
+  }
+}
+
+/* Advanced: a column per formation group, keyed the way the file orders them —
+   F1 is your own flight, F2 a supporting one, E1 and E2 the opposing sides. */
+function advColumns(){
+  const m = q();
+  const cols = [];
+  for(const [side, tag] of [['friendly','F'], ['enemy','E']]){
+    (m[side] || []).forEach((f, i) => {
+      (f.groups || []).forEach((g, j) => {
+        const label = tag + (i + 1) + (f.groups.length > 1 ? '.' + (j + 1) : '');
+        cols.push({ label, sub: planeName((g.worldObjectSetup||{}).objectCfg), w: g.worldObjectSetup || {} });
+      });
+    });
+  }
+  return cols;
+}
+
+function renderAdvanced(){
+  const m = q();
+  $('#advMission').innerHTML = [
+    ['missionType', m.missionType], ['settingId', m.settingId],
+    ['defenceLvl', m.defenceLvl], ['targetSize', m.targetSize], ['targets', m.targets],
+    ['start', (m.start||[]).join(', ')], ['goal', (m.goal||[]).join(', ')],
+  ].map(([k,v]) => `<div>${k}<b>${v === undefined ? '—' : v}</b></div>`).join('');
+
+  const cols = advColumns();
+  $('#advHead').innerHTML = '<tr><th>Value</th>' +
+    cols.map(c => `<th>${c.label}<small>${c.sub}</small></th>`).join('') + '</tr>';
+
+  const rows = [
+    ['ammoScheme',   w => w.ammoScheme],
+    ['fuelAmount',   w => typeof w.fuelAmount === 'number' ? Math.round(w.fuelAmount * 1000) / 1000 : w.fuelAmount],
+    ['convergence',  w => w.convergence],
+    ['bombsTimer',   w => w.bombsTimer],
+    ['emblem',       w => w.emblem],
+    ['victoryCount', w => w.victoryCount],
+    ['paintScheme',  w => w.paintScheme || '—'],
+    ['tcode',        w => w.tcode ? decodeURIComponent(w.tcode).replace(/ /g,'␣') : '—'],
+    ['tcolors',      w => w.tcolors || '—'],
+  ];
+  $('#advBody').innerHTML = rows.map(([name, get]) =>
+    '<tr><td>' + name + '</td>' +
+    cols.map(c => `<td>${get(c.w) ?? '—'}</td>`).join('') + '</tr>').join('');
+}
+
+function renderToolbar(){
+  const has = !!q();
+  for(const id of ['#btnSave','#btnSaveAs','#btnRaw']) $(id).disabled = !has;
+  $('#btnRefresh').disabled = !(has && App.mode === 'fsapi');
+  const status = $('#tbStatus');
+  if(!has){
+    status.textContent = App.fsApiSupported
+      ? 'Chrome/Edge detected — files can be saved straight back to disk.'
+      : 'This browser will save by downloading a copy — move it into the Presets folder yourself.';
+    return;
+  }
+  status.innerHTML =
+    `<b>${App.mode === 'fsapi' ? 'Linked to file — Save writes directly' : 'Download mode — Save prompts a download'}</b>` +
+    (App.dirty ? '<span class="dirty-dot" title="Unsaved changes"></span> unsaved changes' : '');
+}
+
+function renderAll(){
+  const has = !!q();
+  $('#emptyState').style.display  = has ? 'none' : '';
+  $('#mainContent').style.display = has ? '' : 'none';
+  renderToolbar();
+  if(!has) return;
+  $('#fileSub').textContent = App.fileName || '';
+  renderMission();
+  renderWxBar();
+  renderForms();
+  renderAdvanced();
+}
+
+/* ------------------------------ File I/O ------------------------------ */
+
+function loadText(text, fileName, handle, mode){
+  let parsed;
+  try{
+    parsed = JSON.parse(text);
+  }catch(err){
+    toast('That file is not valid JSON — is it really a Task Editor mission?', true);
+    return false;
+  }
+  if(!parsed || !parsed.qmission || !parsed.qmission.envConfig){
+    toast('That JSON has no "qmission" block — Task Editor missions live in data\\NSData\\UserData\\QuickMission\\Presets.', true);
+    return false;
+  }
+  App.data = parsed;
+  App.fileName = fileName;
+  App.handle = handle;
+  App.mode = mode;
+  App.dirty = false;
+  closePop();
+  renderAll();
+  toast(`Loaded ${fileName}.`);
+  return true;
+}
+
+async function openViaFsApi(){
+  const opts = {
+    types:[{ description:'Task Editor mission', accept:{ 'application/json':['.json'] } }],
+    excludeAcceptAllOption:false,
+  };
+  if(App.handle) opts.startIn = App.handle;
+  let handle;
+  try{
+    [handle] = await window.showOpenFilePicker(opts);
+  }catch(err){
+    if(err && err.name === 'AbortError') return;
+    // startIn can throw on a stale handle (folder moved or deleted) — retry
+    // once without it before giving up on the API entirely.
+    if(App.handle){
+      try{
+        delete opts.startIn;
+        [handle] = await window.showOpenFilePicker(opts);
+      }catch(err2){
+        if(err2 && err2.name === 'AbortError') return;
+        return fallbackAfterFsApiError(err2);
+      }
+    } else {
+      return fallbackAfterFsApiError(err);
+    }
+  }
+  try{
+    const file = await handle.getFile();
+    loadText(await file.text(), file.name, handle, 'fsapi');
+  }catch(err){
+    console.error(err);
+    toast('Could not read that file.', true);
+  }
+}
+
+function fallbackAfterFsApiError(err){
+  // Some contexts (an embedded preview pane, an iframe, certain policies)
+  // expose the API but reject it with a SecurityError. Don't dead-end.
+  console.warn('File System Access API unavailable, falling back to upload/download:', err);
+  App.fsApiSupported = false;
+  openViaFallback();
+}
+
+function openViaFallback(){
+  const input = el('input');
+  input.type = 'file';
+  input.accept = '.json,application/json';
+  input.addEventListener('change', ()=>{
+    const file = input.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=> loadText(String(reader.result), file.name, null, 'fallback');
+    reader.readAsText(file);
+  });
+  input.click();
+}
+function openFile(){ App.fsApiSupported ? openViaFsApi() : openViaFallback(); }
+
+// The game writes this file compact, with no whitespace, and loaded a
+// hand-written one back without reformatting it. Match that exactly.
+function serialize(){ return JSON.stringify(App.data); }
+
+function suggestedFileName(){
+  const now = new Date();
+  const stamp = `${now.getFullYear()}-${pad2(now.getMonth()+1)}-${pad2(now.getDate())}_` +
+                `${pad2(now.getHours())}-${pad2(now.getMinutes())}-${pad2(now.getSeconds())}`;
+  const safe = (q().internalName || 'mission').replace(/[\\/:*?"<>|]/g,'').trim() || 'mission';
+  return `${safe}_${stamp}.json`;
+}
+function stampNow(){
+  const now = new Date();
+  q().timestamp = `${now.getFullYear()}.${pad2(now.getMonth()+1)}.${pad2(now.getDate())} ` +
+                  `${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}`;
+}
+
+async function save(forceNew){
+  if(!q()) return;
+  stampNow();
+  const text = serialize();
+
+  if(App.mode === 'fsapi' && App.handle && !forceNew){
+    try{
+      const writable = await App.handle.createWritable();
+      await writable.write(text);
+      await writable.close();
+      App.dirty = false;
+      renderToolbar();
+      toast(`Saved to ${App.fileName}. Reopen the Task Editor mission list to see it.`);
+      return;
+    }catch(err){
+      console.error(err);
+      toast('Direct save failed (permission?) — downloading a copy instead.', true);
+    }
+  }
+
+  const name = forceNew ? suggestedFileName() : (App.fileName || suggestedFileName());
+  if(App.fsApiSupported && forceNew){
+    try{
+      const handle = await window.showSaveFilePicker({
+        suggestedName:name,
+        types:[{ description:'Task Editor mission', accept:{ 'application/json':['.json'] } }],
+        startIn: App.handle || undefined,
+      });
+      const writable = await handle.createWritable();
+      await writable.write(text);
+      await writable.close();
+      App.handle = handle; App.fileName = handle.name; App.mode = 'fsapi'; App.dirty = false;
+      renderAll();
+      toast(`Saved as ${handle.name}.`);
+      return;
+    }catch(err){
+      if(err && err.name === 'AbortError') return;
+      console.error(err);
+    }
+  }
+  downloadText(name, text);
+  toast(`Downloaded ${name}. Put it in data\\NSData\\UserData\\QuickMission\\Presets.`);
+}
+
+function downloadText(filename, text){
+  const blob = new Blob([text], { type:'application/json' });
+  const a = el('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=> URL.revokeObjectURL(a.href), 4000);
+}
+
+async function refresh(){
+  if(!(App.mode === 'fsapi' && App.handle)) return;
+  if(App.dirty && !confirm('Re-reading from disk will discard your unsaved changes. Continue?')) return;
+  try{
+    const file = await App.handle.getFile();
+    loadText(await file.text(), file.name, App.handle, 'fsapi');
+  }catch(err){
+    console.error(err);
+    toast('Could not re-read that file — it may have been moved or deleted.', true);
+  }
+}
+
+/* ------------------------------ Wiring ------------------------------ */
+
+for(const p of PRESET_PATHS){
+  const row = el('div'); row.className = 'path-hint';
+  const s = el('span'); s.textContent = p;
+  const b = el('button'); b.textContent = 'Copy';
+  b.addEventListener('click', ()=> navigator.clipboard.writeText(p).then(
+    ()=> toast('Path copied.'), ()=> toast('Could not copy — select and copy it manually.', true)));
+  row.appendChild(s); row.appendChild(b);
+  $('#pathHints').appendChild(row);
+}
+
+$('#btnOpen').addEventListener('click', openFile);
+$('#btnEmptyOpen').addEventListener('click', openFile);
+$('#btnSave').addEventListener('click', ()=> save(false));
+$('#btnSaveAs').addEventListener('click', ()=> save(true));
+$('#btnRefresh').addEventListener('click', refresh);
+$('#btnRaw').addEventListener('click', ()=>{
+  $('#rawViewText').textContent = serialize();
+  $('#rawModal').classList.add('open');
+});
+$('#missionName').addEventListener('change', e=>{ q().internalName = e.target.value; markDirty(); });
+$('#advToggle').addEventListener('click', ()=>{
+  const panel = $('#advPanel');
+  panel.classList.toggle('open');
+  $('#advToggle').textContent = (panel.classList.contains('open') ? '▾' : '▸') +
+    ' Advanced — stored values, unverified';
+});
+
+document.addEventListener('click', e=>{
+  const close = e.target.getAttribute && e.target.getAttribute('data-close');
+  if(close) $('#' + close).classList.remove('open');
+  const pop = $('#pop');
+  if(pop.classList.contains('open') && !e.target.closest('#pop')
+     && !e.target.closest('.wx') && !e.target.closest('.info-btn')) closePop();
+});
+document.querySelectorAll('.modal-overlay').forEach(o=>{
+  o.addEventListener('click', e=>{ if(e.target === o) o.classList.remove('open'); });
+});
+document.addEventListener('keydown', e=>{
+  if(e.key === 'Escape'){
+    document.querySelectorAll('.modal-overlay.open').forEach(o=> o.classList.remove('open'));
+    if(App.openPop) closePop();
+  }
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's'){ e.preventDefault(); save(false); }
+});
+window.addEventListener('resize', ()=>{ if(App.openPop) closePop(); });
+window.addEventListener('beforeunload', e=>{
+  if(App.dirty){ e.preventDefault(); e.returnValue = ''; }
+});
+
+renderAll();
+</script>
+</body>
+</html>
