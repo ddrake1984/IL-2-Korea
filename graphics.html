@@ -1623,22 +1623,35 @@ async function il2Connect(container, onReady){
   // --- route 2: find it in the shared folder ---
   const dirHandle = await il2Get();
 
-  async function* walk(dir, depth){
-    try{
-      for await (const [name, entry] of dir.entries()){
-        if(entry.kind === 'directory'){
-          if(depth > 0) yield* walk(entry, depth - 1);
-        } else {
-          yield [name, entry];
-        }
-      }
-    }catch(err){ /* unreadable folder — step over it, as folder-picker does */ }
-  }
+  /* startup.cfg is a direct child of the data folder, so look there and stop.
+
+     The previous version walked depth-first, which meant recursing through
+     every directory that sorts before "s" — ACCData, Audio, Career, graphics,
+     GUI, LuaScripts, Missions and the rest — before it could reach a file
+     sitting at the top level. Each directory's enumeration was also wrapped
+     in a try that swallowed errors, so one unreadable folder anywhere in that
+     tree silently truncated the search and the file was reported missing.
+     Nothing is swallowed here: a failure to read the folder is thrown, and
+     the caller reports it with the browser's own error name. */
+  const filesIn = async (dir) => {
+    const out = new Map();
+    for await (const [name, entry] of dir.entries()){
+      if(entry.kind === 'file') out.set(name.toLowerCase(), entry);
+    }
+    return out;
+  };
 
   const findStartup = async (dir) => {
-    for await (const [name, entry] of walk(dir, 2)){
-      if(name.toLowerCase() === 'startup.cfg') return entry;
-    }
+    let files = await filesIn(dir);
+    if(files.has('startup.cfg')) return files.get('startup.cfg');
+
+    // The install root may have been chosen rather than data itself.
+    try{
+      const data = await dir.getDirectoryHandle('data');
+      files = await filesIn(data);
+      if(files.has('startup.cfg')) return files.get('startup.cfg');
+    }catch(err){ /* no data folder inside this one */ }
+
     return null;
   };
 
