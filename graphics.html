@@ -1650,8 +1650,26 @@ async function il2Connect(container, onReady){
         il2PutKey(IL2_CFG_KEY, found).catch(()=>{});   // remember it for next time
         return;
       }
-      say('Could not find <code>startup.cfg</code> anywhere in <code>' + dirHandle.name +
-          '</code>. Open it once below and this page will remember it.');
+      // Folder handles are per origin, so a folder set on one address says
+      // nothing about another — and a handle picked earlier may no longer be
+      // the folder its name suggests. Rather than ask anyone to work that out,
+      // describe what was actually searched and offer a one-click fix.
+      let files = 0, folders = 0; const names = [];
+      try{
+        for await (const [name, entry] of dirHandle.entries()){
+          if(entry.kind === 'directory') folders++; else files++;
+          if(names.length < 6) names.push(name);
+        }
+      }catch(err){ /* nothing more to add */ }
+
+      const fix = el('button', 'tb-btn primary');
+      fix.textContent = 'Pick startup.cfg…';
+      fix.addEventListener('click', openFile);
+      say('Searched <code>' + dirHandle.name + '</code> and found no <code>startup.cfg</code>. ' +
+          'It holds ' + files + ' files and ' + folders + ' folders' +
+          (names.length ? ', starting with ' + names.map(n => '<code>' + n + '</code>').join(', ') : '') +
+          '. If that is not your IL-2 <code>data</code> folder, pick the file directly and ' +
+          'it will be remembered from now on.', fix);
       return;
     }catch(err){
       console.error('Searching the IL-2 folder failed:', err);
