@@ -332,7 +332,6 @@ button{font-family:inherit;cursor:pointer;}
     </div>
   </a>
   <div class="tb-sep"></div>
-  <select class="tb-select" id="installSelect"><option value="">No file open</option></select>
   <button class="tb-btn" id="btnAddInstall">＋ Open startup.cfg…</button>
   <button class="tb-btn primary" id="btnSave" disabled>💾 Save</button>
   <button class="tb-btn" id="btnSaveAs" disabled>Save As…</button>
@@ -352,7 +351,7 @@ button{font-family:inherit;cursor:pointer;}
 
   <div class="empty-state" id="emptyState">
     <h2>Open a startup.cfg file to begin</h2>
-    <p>Browsers can't scan your PC for files on their own for security reasons — click <b>Open startup.cfg…</b> above and browse to your install folder the first time. After that, this file stays available as a quick‑switch tab for the rest of your session.</p>
+    <p>Browsers can't scan your PC for files on their own for security reasons — click <b>Open startup.cfg…</b> above and browse to your install folder. Set your IL-2 folder on the <a href="index.html" style="color:var(--amber);">tools index</a> and this page will open it for you instead.</p>
     <p style="margin-bottom:6px;">Common locations to check:</p>
     <div class="path-hints" id="pathHints"></div>
     <button class="tb-btn primary" id="btnEmptyOpen">＋ Open startup.cfg…</button>
@@ -390,18 +389,6 @@ button{font-family:inherit;cursor:pointer;}
   <div class="drawer-body" id="drawerBody"></div>
 </div>
 
-<!-- Add install modal (same guided flow as the first-run page, reused for adding more installs) -->
-<div class="modal-overlay" id="addInstallModal">
-  <div class="modal" style="max-width:560px;">
-    <div class="modal-head"><h3>Open startup.cfg</h3><button class="modal-close" data-close-modal="addInstallModal">×</button></div>
-    <div class="modal-body">
-      <p style="margin:0 0 12px;">Browsers can't scan your PC for files on their own for security reasons — click <b>Open startup.cfg…</b> below and browse to your install folder. If you've opened a file before, the picker will try to start in that same folder.</p>
-      <p style="margin:0 0 6px;">Common locations to check:</p>
-      <div class="path-hints" id="pathHintsModal"></div>
-      <button class="tb-btn primary" id="btnModalOpen" style="width:100%;justify-content:center;margin-top:4px;">＋ Open startup.cfg…</button>
-    </div>
-  </div>
-</div>
 
 <!-- Presets modal -->
 <div class="modal-overlay" id="presetModal">
@@ -434,18 +421,6 @@ button{font-family:inherit;cursor:pointer;}
   </div>
 </div>
 
-<!-- Add install label modal -->
-<div class="modal-overlay" id="labelModal">
-  <div class="modal">
-    <div class="modal-head"><h3>Name this install</h3><button class="modal-close" data-close-modal="labelModal">×</button></div>
-    <div class="modal-body">
-      <label class="field-label">Label (so you can tell your installs apart)</label>
-      <input class="field-input" id="labelInput" placeholder="e.g. C: Drive Install / Steam D: Drive">
-      <p style="font-size:11px;color:var(--text-faint);">File: <span id="labelFileName" style="color:var(--text);"></span></p>
-    </div>
-    <div class="modal-foot"><button class="tb-btn primary" id="btnConfirmLabel">Add</button></div>
-  </div>
-</div>
 
 <div class="toast" id="toast"></div>
 
@@ -814,17 +789,6 @@ function renderApp(){
 }
 
 function renderToolbar(){
-  const sel = $('#installSelect');
-  sel.innerHTML = '';
-  if(App.installs.length===0){
-    sel.appendChild(el('option','', 'No file open'));
-  }
-  App.installs.forEach(inst=>{
-    const o = el('option','', (inst.dirty?'● ':'') + inst.label);
-    o.value = inst.id;
-    sel.appendChild(o);
-  });
-  sel.value = App.activeId || '';
   const has = !!activeInstall();
   $('#btnSave').disabled = !has;
   $('#btnSaveAs').disabled = !has;
@@ -836,7 +800,7 @@ function renderToolbar(){
   const status = $('#tbStatus');
   if(inst){
     status.innerHTML = `<b>${inst.mode==='fsapi' ? 'Linked to file — Save writes directly' : 'Download mode — Save prompts a download'}</b>${inst.dirty ? '<span class="dirty-dot" title="Unsaved changes"></span> unsaved changes' : ''}`;
-    $('#fileSub').textContent = `${inst.label} — ${inst.fileName}`;
+    $('#fileSub').textContent = inst.fileName;
   } else {
     status.textContent = App.fsApiSupported ? 'Chrome/Edge detected — files can be saved directly back to disk. (If Open fails with a security error, you\'re likely viewing this inside an embedded preview — open the file in a normal browser tab for direct save.)' : 'Save will download a new copy — move it over the original file (drag/drop or replace in File Explorer).';
     $('#fileSub').textContent = 'No file loaded';
@@ -1281,8 +1245,7 @@ function openFile(){
 // straight to the OS file picker — the picker itself is triggered from the
 // primary button inside that guided view (and on the very first run, the
 // empty-state page's own button).
-$('#btnAddInstall').addEventListener('click', ()=>{ renderPathHints($('#pathHintsModal')); openModal('addInstallModal'); });
-$('#btnModalOpen').addEventListener('click', ()=>{ closeModal('addInstallModal'); openFile(); });
+$('#btnAddInstall').addEventListener('click', openFile);
 $('#btnEmptyOpen').addEventListener('click', openFile);
 
 /* Re-read the linked file from disk, discarding any in-app edits that
@@ -1315,37 +1278,25 @@ async function refreshActive(){
 }
 $('#btnRefresh').addEventListener('click', refreshActive);
 
-let pendingInstall = null;
+// One file at a time: opening another replaces it. There is no naming step
+// and no switcher, so the manual and automatic routes land in the same place —
+// the file simply opens.
 function promptAddInstall({mode, handle, fileName, text}){
   const state = parseCfgText(text);
   if(!state.hasGraphics){
     toast('No [KEY = graphics] section found in that file — is this a valid startup.cfg?', true);
     return;
   }
-  pendingInstall = { mode, handle, fileName, state };
-  $('#labelFileName').textContent = fileName;
-  const guess = App.installs.length===0 ? 'Main Install' : `Install ${App.installs.length+1}`;
-  $('#labelInput').value = guess;
-  openModal('labelModal');
-  setTimeout(()=>$('#labelInput').select(), 50);
-}
-$('#btnConfirmLabel').addEventListener('click', ()=>{
-  if(!pendingInstall) return;
-  const label = $('#labelInput').value.trim() || 'Install';
-  const inst = { id:uid(), label, mode:pendingInstall.mode, handle:pendingInstall.handle,
-                 fileName:pendingInstall.fileName, state:pendingInstall.state, dirty:false };
-  App.installs.push(inst);
-  App.activeId = inst.id;
-  pendingInstall = null;
-  closeModal('labelModal');
-  renderApp();
-  toast(`Loaded "${inst.label}".`);
-});
+  if(App.installs.some(i => i.dirty) &&
+     !confirm('The open file has unsaved changes. Opening another will discard them. Continue?')) return;
 
-$('#installSelect').addEventListener('change', (e)=>{
-  App.activeId = e.target.value || null;
+  const inst = { id:uid(), label:'startup.cfg', mode, handle, fileName, state, dirty:false };
+  App.installs = [inst];
+  App.activeId = inst.id;
   renderApp();
-});
+  toast(`Loaded ${fileName}.`);
+}
+
 
 async function saveActive(forceDownload){
   const inst = activeInstall(); if(!inst) return;
@@ -1543,7 +1494,19 @@ async function il2Connect(container, onReady){
     return say('No IL-2 folder set yet. <a href="index.html">Set one on the tools index</a> ' +
                'and every tool here will find your files on its own.');
   }
-  if(await il2Permission(handle) === 'granted'){ row.remove(); return onReady(handle); }
+  // onReady is async and nothing awaits il2Connect, so a rejection in there
+  // would vanish as an unhandled promise and look exactly like "did nothing".
+  if(await il2Permission(handle) === 'granted'){
+    row.remove();
+    try{
+      await onReady(handle);
+    }catch(err){
+      console.error('Using the saved IL-2 folder failed:', err);
+      say('Could not use the saved folder <code>' + handle.name + '</code> — ' +
+          (err && err.message ? err.message : err) + '. Open the file manually below.');
+    }
+    return;
+  }
 
   // Browsers drop folder access when they restart and regaining it needs a real
   // click, so offer one rather than prompting unbidden.
@@ -1563,30 +1526,25 @@ async function il2Connect(container, onReady){
 // there is nothing left to ask: open it.
 il2Connect($('#pathHints'), async (dir) => {
   if(App.installs.length) return;               // something is already open
-  let handle, file, text;
-  try{
-    handle = await dir.getFileHandle('startup.cfg');
-    file   = await handle.getFile();
-    text   = await file.text();
-  }catch(err){
-    console.warn('No startup.cfg in the saved IL-2 folder:', err);
-    return;
+  // Accept the data folder or the install root above it, and say which name it
+  // looked for when neither has one — "nothing happened" is not a diagnosis.
+  let handle, file, text, looked = [];
+  for(const path of [[], ['data']]){
+    try{
+      let d = dir;
+      for(const seg of path) d = await d.getDirectoryHandle(seg);
+      handle = await d.getFileHandle('startup.cfg');
+      break;
+    }catch(err){ looked.push((path.length ? path.join('\\') + '\\' : '') + 'startup.cfg'); }
   }
-  const state = parseCfgText(text);
-  if(!state.hasGraphics){
-    toast('The startup.cfg in your saved folder has no [KEY = graphics] section.', true);
-    return;
-  }
-  // Added directly rather than through promptAddInstall: that asks what to call
-  // the install and waits for a click, which is the right flow when you picked
-  // the file yourself and pure friction when the folder is already known.
-  const inst = { id:uid(), label:'Main Install', mode:'fsapi', handle,
-                 fileName:file.name, state, dirty:false };
-  App.installs.push(inst);
-  App.activeId   = inst.id;
+  if(!handle) throw new Error('no startup.cfg found (looked for ' + looked.join(' and ') + ')');
+
+  file = await handle.getFile();
+  text = await file.text();
+
+  // Same route as opening it by hand — there is no naming step in either now.
   App.lastHandle = handle;
-  renderApp();
-  toast(`Loaded startup.cfg from your IL-2 folder.`);
+  promptAddInstall({ mode:'fsapi', handle, fileName:file.name, text });
 });
 
 window.addEventListener('beforeunload', (e)=>{

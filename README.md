@@ -33,7 +33,7 @@ What each tool does with it:
 
 | Tool | With the folder set |
 |---|---|
-| Graphics Configurator | opens your `startup.cfg` on arrival |
+| Graphics Configurator | opens your `startup.cfg` on arrival, no dialog |
 | Career File Viewer | lists every career in `data\Career` to pick from |
 | Task Editor Missions | lists your saved missions, newest first |
 | Cooperative Converter | loads your generated mission on arrival |
