@@ -82,6 +82,27 @@ a{color:var(--amber);}
 }
 .empty-state h2{color:var(--text-bright);font-size:18px;margin-bottom:10px;letter-spacing:.3px;}
 .empty-state p{font-size:14px;line-height:1.6;max-width:600px;margin:0 auto 14px;}
+.saved-folder{
+  display:flex;align-items:center;gap:14px;justify-content:center;flex-wrap:wrap;
+  background:rgba(226,162,58,.08);border:1px solid rgba(226,162,58,.3);border-radius:6px;
+  padding:12px 16px;margin:0 auto 12px;max-width:660px;text-align:left;
+}
+.saved-folder span{font-size:13px;color:var(--text);}
+.saved-folder code{font-family:Consolas,Menlo,monospace;color:var(--text-bright);}
+.saved-folder a{color:var(--amber);}
+.saved-folder a:hover{color:var(--amber-bright);}
+.saved-list{max-width:660px;margin:0 auto 16px;text-align:left;}
+.saved-head{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--text-faint);margin-bottom:8px;}
+.saved-head code{font-family:Consolas,Menlo,monospace;text-transform:none;letter-spacing:0;}
+.saved-row{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;
+  background:var(--row-bg,#332e27);border:1px solid var(--border);border-radius:4px;
+  padding:9px 13px;margin-bottom:5px;color:inherit;font-family:inherit;text-align:left;cursor:pointer;
+}
+.saved-row:hover{border-color:var(--amber);}
+.saved-row .sr-name{font-size:14.5px;font-weight:700;color:var(--text-bright);}
+.saved-row:hover .sr-name{color:var(--amber-bright);}
+.saved-row .sr-date{font-size:11.5px;color:var(--text-faint);font-family:Consolas,Menlo,monospace;white-space:nowrap;}
 .path-hints{display:flex;flex-direction:column;gap:6px;margin:14px auto 18px;max-width:660px;text-align:left;}
 .path-hint{
   background:#1f1c18;border:1px solid var(--border);border-radius:4px;padding:7px 11px;font-size:11.5px;
@@ -1706,6 +1727,124 @@ $('#btnReload').addEventListener('click', reloadFile);
 $('#btnClose').addEventListener('click', closeFile);
 
 boot();
+
+/* ====================================================================
+   The shared IL-2 folder, set once on the tools index page.
+
+   A directory handle is structured-cloneable, so it lives in IndexedDB and
+   every tool on this origin can reuse the same one — the browser re-grants
+   access to that exact folder, which a stored path string could never do.
+   Browsers drop that access when they restart and regaining it needs a real
+   click, so a folder that has gone cold is offered as a button.
+   ==================================================================== */
+const IL2_DB = 'il2-korea-tools', IL2_STORE = 'handles', IL2_KEY = 'dataDir';
+
+function il2db(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IL2_DB, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(IL2_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = () => reject(req.error);
+  });
+}
+async function il2Get(){
+  try{
+    const db = await il2db();
+    return await new Promise((resolve, reject) => {
+      const tx  = db.transaction(IL2_STORE, 'readonly');
+      const req = tx.objectStore(IL2_STORE).get(IL2_KEY);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror   = () => reject(req.error);
+    });
+  }catch(err){ return null; }
+}
+async function il2Permission(handle){
+  if(!handle || !handle.queryPermission) return 'denied';
+  try{ return await handle.queryPermission({ mode:'readwrite' }); }
+  catch(err){ return 'denied'; }
+}
+async function il2Connect(container, onReady){
+  const row = document.createElement('div');
+  row.className = 'saved-folder';
+  const say = (html, btn) => {
+    row.innerHTML = '<span>' + html + '</span>';
+    if(btn) row.appendChild(btn);
+    if(!row.parentNode) container.parentNode.insertBefore(row, container);
+  };
+
+  // Opened straight off disk, a file:// document gets no shared storage, so the
+  // folder set on the index page is invisible here. Silence in that case is
+  // indistinguishable from a broken feature, so say it plainly.
+  try{ await il2db(); }
+  catch(err){
+    return say('Folder memory needs this page served over http — opened straight from disk, ' +
+               'the browser gives it no shared storage.');
+  }
+
+  const handle = await il2Get();
+  if(!handle){
+    return say('No IL-2 folder set yet. <a href="index.html">Set one on the tools index</a> ' +
+               'and every tool here will find your files on its own.');
+  }
+  if(await il2Permission(handle) === 'granted'){ row.remove(); return onReady(handle); }
+
+  // Browsers drop folder access when they restart and regaining it needs a real
+  // click, so offer one rather than prompting unbidden.
+  const btn = document.createElement('button');
+  btn.className = 'tb-btn primary';
+  btn.textContent = 'Use saved folder';
+  btn.addEventListener('click', async () => {
+    let ok = false;
+    try{ ok = (await handle.requestPermission({ mode:'readwrite' })) === 'granted'; }
+    catch(err){ console.error(err); }
+    if(ok){ row.remove(); onReady(handle); }
+    else toast('Access was not granted — open the file manually instead.', true);
+  });
+  say('Saved folder <code>' + handle.name + '</code> — the browser needs one click to reconnect it.', btn);
+}
+// Careers are one .db per pilot in data\Career, so list them rather than making
+// anyone go looking. The name is the filename — the pilot's own name lives
+// inside the database, which is not worth opening every file to read.
+il2Connect($('#pathHints'), async (dir) => {
+  let careers = [];
+  try{
+    const cdir = await dir.getDirectoryHandle('Career');
+    for await (const [name, handle] of cdir.entries()){
+      if(handle.kind !== 'file' || !/\.db$/i.test(name)) continue;
+      const file = await handle.getFile();
+      careers.push({ name, handle, mtime:file.lastModified, size:file.size });
+    }
+  }catch(err){
+    console.warn('No Career folder in the saved IL-2 folder:', err);
+    return;
+  }
+  if(!careers.length) return;
+  careers.sort((a,b) => b.mtime - a.mtime);
+
+  const box = document.createElement('div');
+  box.className = 'saved-list';
+  box.innerHTML = '<div class="saved-head">Your careers — ' + careers.length +
+    ' in <code>' + esc(dir.name) + '\\Career</code></div>';
+  for(const c of careers){
+    const b = document.createElement('button');
+    b.className = 'saved-row';
+    b.innerHTML = '<span class="sr-name">' + esc(c.name.replace(/\.db$/i,'')) + '</span>' +
+      '<span class="sr-date">' + new Date(c.mtime).toLocaleString() + '</span>';
+    b.addEventListener('click', async () => {
+      try{
+        const file = await c.handle.getFile();
+        loadBytes(new Uint8Array(await file.arrayBuffer()), file.name, c.handle);
+      }catch(err){
+        console.error(err);
+        toast('Could not read that career — has it been moved?', true);
+      }
+    });
+    box.appendChild(b);
+  }
+  const hints = $('#pathHints');
+  hints.parentNode.insertBefore(box, hints);
+  hints.style.display = 'none';
+});
 
 </script>
 </body>

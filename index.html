@@ -60,6 +60,27 @@ h1,h2,h3{font-weight:700;margin:0;}
   font-size:15px;line-height:1.65;color:var(--text-dim);max-width:600px;margin:0 auto;
 }
 
+.folderbar{
+  display:flex;align-items:center;gap:14px;margin-bottom:20px;
+  background:var(--bg-panel);border:1px solid var(--border);border-radius:8px;padding:14px 18px;
+}
+.folderbar.linked{border-color:rgba(127,174,109,.35);background:rgba(127,174,109,.06);}
+.folderbar.stale{border-color:rgba(226,162,58,.4);background:rgba(226,162,58,.06);}
+.fb-icon{font-size:20px;line-height:1;flex-shrink:0;filter:saturate(0) brightness(1.5) sepia(1) hue-rotate(-10deg) saturate(2.5);}
+.fb-text{flex:1;display:flex;flex-direction:column;line-height:1.35;min-width:0;}
+.fb-text b{font-size:14px;color:var(--text-bright);letter-spacing:.4px;}
+.fb-text span{font-size:12.5px;color:var(--text-dim);overflow-wrap:anywhere;}
+.fb-text span code{font-family:Consolas,Menlo,monospace;color:var(--text);font-size:12px;}
+.fb-btn{
+  background:#33302a;border:1px solid var(--border);color:var(--text-bright);
+  padding:7px 14px;border-radius:4px;font-size:13px;font-weight:600;letter-spacing:.3px;
+  flex-shrink:0;font-family:inherit;cursor:pointer;
+}
+.fb-btn:hover{background:#3c3931;border-color:rgba(255,255,255,.2);}
+.fb-btn.primary{background:linear-gradient(#c9902f,#a9761f);border-color:#8a611a;color:#231a0c;}
+.fb-btn.primary:hover{background:linear-gradient(#d69c39,#b58026);}
+@media (max-width:620px){.folderbar{flex-wrap:wrap;}.fb-text{flex-basis:100%;}}
+
 .toolgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;}
 
 .tool{
@@ -161,6 +182,18 @@ footer .sep{margin:0 9px;opacity:.5;}
       entirely on your own machine — pick a file, work on it, and nothing ever leaves
       the browser.
     </p>
+  </div>
+
+  <div class="folderbar" id="folderBar" style="display:none;">
+    <span class="fb-icon" id="fbIcon">📁</span>
+    <div class="fb-text">
+      <b id="fbTitle">Your IL-2 folder</b>
+      <span id="fbSub"></span>
+    </div>
+    <button class="fb-btn primary" id="fbChoose">Choose folder…</button>
+    <button class="fb-btn" id="fbAllow" style="display:none;">Reconnect</button>
+    <button class="fb-btn" id="fbClear" style="display:none;"
+      title="Forget this folder so you can pick a different one. Nothing on disk is changed or deleted — this only clears what the browser remembers.">Clear</button>
   </div>
 
   <div class="toolgrid">
@@ -284,6 +317,161 @@ footer .sep{margin:0 9px;opacity:.5;}
   <span class="sep">·</span>
   Not affiliated with 1C Game Studios or 777 Studios
 </footer>
+
+<script>
+'use strict';
+/* ====================================================================
+   The shared IL-2 folder.
+
+   The File System Access API hands back a directory *handle*, not a path,
+   and a handle is structured-cloneable — so it can be kept in IndexedDB
+   and reused by every tool served from this origin. The browser re-grants
+   access to that exact folder, which is why this works at all and why a
+   stored path string never could.
+
+   Permission does not always survive a browser restart. queryPermission
+   reports where we stand without prompting; requestPermission needs a real
+   click, so the page offers a button rather than prompting on load.
+   ==================================================================== */
+const IL2_DB = 'il2-korea-tools', IL2_STORE = 'handles', IL2_KEY = 'dataDir';
+
+function il2db(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IL2_DB, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(IL2_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = () => reject(req.error);
+  });
+}
+async function il2Put(handle){
+  const db = await il2db();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IL2_STORE, 'readwrite');
+    tx.objectStore(IL2_STORE).put(handle, IL2_KEY);
+    tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+  });
+}
+async function il2Get(){
+  try{
+    const db = await il2db();
+    return await new Promise((resolve, reject) => {
+      const tx  = db.transaction(IL2_STORE, 'readonly');
+      const req = tx.objectStore(IL2_STORE).get(IL2_KEY);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror   = () => reject(req.error);
+    });
+  }catch(err){ return null; }
+}
+async function il2Clear(){
+  const db = await il2db();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IL2_STORE, 'readwrite');
+    tx.objectStore(IL2_STORE).delete(IL2_KEY);
+    tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+  });
+}
+async function il2Permission(handle, mode){
+  if(!handle || !handle.queryPermission) return 'denied';
+  try{ return await handle.queryPermission({ mode: mode || 'readwrite' }); }
+  catch(err){ return 'denied'; }
+}
+
+// Accept either the data folder or the install root, and say so plainly when
+// it is neither rather than storing something the tools can't use.
+async function il2NormaliseDataDir(handle){
+  try{ await handle.getDirectoryHandle('Missions'); return handle; }catch(err){}
+  try{
+    const data = await handle.getDirectoryHandle('data');
+    await data.getDirectoryHandle('Missions');
+    return data;
+  }catch(err){}
+  return null;
+}
+
+/* ------------------------------ UI ------------------------------ */
+
+const $ = s => document.querySelector(s);
+const supported = typeof window.showDirectoryPicker === 'function';
+
+async function renderFolderBar(){
+  const bar = $('#folderBar');
+  bar.style.display = '';
+  bar.className = 'folderbar';
+  $('#fbAllow').style.display = 'none';
+  $('#fbClear').style.display = 'none';
+  $('#fbChoose').style.display = '';
+
+  if(!supported){
+    $('#fbIcon').textContent = '🚫';
+    $('#fbTitle').textContent = 'Folder memory needs Chrome or Edge';
+    $('#fbSub').textContent = 'This browser cannot grant a page access to a folder, so each tool will ask for files individually.';
+    $('#fbChoose').style.display = 'none';
+    return;
+  }
+
+  const handle = await il2Get();
+  if(!handle){
+    $('#fbIcon').textContent = '📁';
+    $('#fbChoose').textContent = 'Choose folder…';
+    $('#fbTitle').textContent = 'Point the tools at your IL-2 folder';
+    $('#fbSub').innerHTML = 'Set it once and every tool here will use it — no more picking the same folder over and over. Choose your game\'s <code>data</code> folder, or the install folder that contains it.';
+    return;
+  }
+
+  const perm = await il2Permission(handle);
+  $('#fbClear').style.display = '';
+  if(perm === 'granted'){
+    bar.classList.add('linked');
+    $('#fbIcon').textContent = '✅';
+    $('#fbTitle').textContent = 'IL-2 folder connected';
+    $('#fbSub').innerHTML = `<code>${handle.name}</code> — every tool on this site will use it automatically.`;
+    $('#fbChoose').textContent = 'Change…';
+  } else {
+    bar.classList.add('stale');
+    $('#fbIcon').textContent = '⚠';
+    $('#fbTitle').textContent = 'IL-2 folder needs reconnecting';
+    $('#fbSub').innerHTML = `<code>${handle.name}</code> is remembered, but the browser drops folder access when it restarts. One click restores it.`;
+    $('#fbAllow').style.display = '';
+    $('#fbChoose').textContent = 'Change…';
+  }
+}
+
+$('#fbChoose').addEventListener('click', async () => {
+  let picked;
+  try{
+    picked = await window.showDirectoryPicker({ mode:'readwrite' });
+  }catch(err){
+    if(err && err.name === 'AbortError') return;
+    console.error(err);
+    return;
+  }
+  const data = await il2NormaliseDataDir(picked);
+  if(!data){
+    const bar = $('#folderBar');
+    bar.className = 'folderbar stale';
+    $('#fbIcon').textContent = '⚠';
+    $('#fbTitle').textContent = 'That does not look like an IL-2 folder';
+    $('#fbSub').innerHTML = `<code>${picked.name}</code> has no <code>Missions</code> folder inside it. Pick the game's <code>data</code> folder, or the install folder that contains it.`;
+    return;
+  }
+  await il2Put(data);
+  renderFolderBar();
+});
+
+$('#fbAllow').addEventListener('click', async () => {
+  const handle = await il2Get();
+  if(!handle) return renderFolderBar();
+  try{ await handle.requestPermission({ mode:'readwrite' }); }catch(err){ console.error(err); }
+  renderFolderBar();
+});
+
+$('#fbClear').addEventListener('click', async () => {
+  await il2Clear();
+  renderFolderBar();
+});
+
+renderFolderBar();
+</script>
 
 </body>
 </html>

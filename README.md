@@ -14,6 +14,42 @@ the page is open.
 
 ---
 
+## Setting your IL-2 folder once
+
+The landing page has a **Choose folder…** button. Point it at your game's `data`
+folder — or the install folder containing it, which it will step into for you —
+and every tool on the site uses it from then on instead of asking again.
+
+What gets remembered is the browser's *handle* on that folder, not a path string,
+which is why this works: the browser re-grants access to that exact folder rather
+than trying to reopen a path it has no rights to. It is kept in IndexedDB, so it
+is per-browser and per-machine, and it never leaves your computer.
+
+Browsers drop folder access when they restart, and regaining it needs a real
+click, so a remembered folder that has gone cold is offered as a one-click
+**Reconnect** rather than a silent failure or an unprompted permission dialog.
+
+What each tool does with it:
+
+| Tool | With the folder set |
+|---|---|
+| Graphics Configurator | opens your `startup.cfg` on arrival |
+| Career File Viewer | lists every career in `data\Career` to pick from |
+| Task Editor Missions | lists your saved missions, newest first |
+| Cooperative Converter | loads your generated mission on arrival |
+
+The manual file and folder pickers stay exactly where they were, so nothing
+depends on this.
+
+**Clear** forgets the folder so you can choose a different one. It changes
+nothing on disk — it only wipes what the browser remembers.
+
+This needs Chrome or Edge. Firefox and Safari have no way to grant a page access
+to a folder, so there the tools fall back to asking for files one at a time, and
+the landing page says so rather than showing a button that cannot work.
+
+---
+
 ## Graphics Configurator — `graphics.html`
 
 Edits the `[KEY = graphics]` section of an IL-2 Korea `startup.cfg` file, laid

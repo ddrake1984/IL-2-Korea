@@ -68,6 +68,15 @@ code{font-family:Consolas,Menlo,monospace;font-size:.92em;color:var(--text-brigh
 .empty-state{border:1px dashed var(--border);border-radius:8px;padding:40px 32px;text-align:center;color:var(--text-dim);background:rgba(0,0,0,.15);}
 .empty-state h2{color:var(--text-bright);font-size:18px;margin-bottom:10px;}
 .empty-state p{font-size:14px;line-height:1.6;max-width:640px;margin:0 auto 14px;}
+.saved-folder{
+  display:flex;align-items:center;gap:14px;justify-content:center;flex-wrap:wrap;
+  background:rgba(226,162,58,.08);border:1px solid rgba(226,162,58,.3);border-radius:6px;
+  padding:12px 16px;margin:0 auto 6px;max-width:640px;text-align:left;
+}
+.saved-folder span{font-size:13px;color:var(--text);}
+.saved-folder code{font-family:Consolas,Menlo,monospace;color:var(--text-bright);}
+.saved-folder a{color:var(--amber);}
+.saved-folder a:hover{color:var(--amber-bright);}
 .path-hints{display:flex;flex-direction:column;gap:6px;margin:14px auto 18px;max-width:640px;text-align:left;}
 .path-hint{background:#1f1c18;border:1px solid var(--border);border-radius:4px;padding:7px 11px;font-size:11.5px;color:var(--text);font-family:Consolas,Menlo,monospace;display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .path-hint span{overflow-wrap:anywhere;}
@@ -346,6 +355,85 @@ const DATA_HINTS = [
   'D:\\Steam\\steamapps\\common\\IL2Series\\data',
 ];
 
+/* ====================================================================
+   The shared IL-2 folder, set once on the tools index page.
+
+   A directory handle is structured-cloneable, so it lives in IndexedDB and
+   every tool on this origin can reuse the same one — the browser re-grants
+   access to that exact folder, which a stored path string could never do.
+   Permission does not always survive a browser restart, and requestPermission
+   needs a real click, so a folder that has gone cold is offered as a button
+   rather than prompted for on load.
+   ==================================================================== */
+const IL2_DB = 'il2-korea-tools', IL2_STORE = 'handles', IL2_KEY = 'dataDir';
+
+function il2db(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IL2_DB, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(IL2_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = () => reject(req.error);
+  });
+}
+async function il2Get(){
+  try{
+    const db = await il2db();
+    return await new Promise((resolve, reject) => {
+      const tx  = db.transaction(IL2_STORE, 'readonly');
+      const req = tx.objectStore(IL2_STORE).get(IL2_KEY);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror   = () => reject(req.error);
+    });
+  }catch(err){ return null; }
+}
+async function il2Permission(handle){
+  if(!handle || !handle.queryPermission) return 'denied';
+  try{ return await handle.queryPermission({ mode:'readwrite' }); }
+  catch(err){ return 'denied'; }
+}
+
+// Renders the reconnect affordance above `container` and calls onReady with the
+// folder once it is usable — straight away when access is already granted, or
+// after a click when the browser has dropped it, which it does on restart.
+async function il2Connect(container, onReady){
+  const row = document.createElement('div');
+  row.className = 'saved-folder';
+  const say = (html, btn) => {
+    row.innerHTML = '<span>' + html + '</span>';
+    if(btn) row.appendChild(btn);
+    if(!row.parentNode) container.parentNode.insertBefore(row, container);
+  };
+
+  // Opened straight off disk, a file:// document gets no shared storage, so the
+  // folder set on the index page is invisible here. Silence in that case is
+  // indistinguishable from a broken feature, so say it plainly.
+  try{ await il2db(); }
+  catch(err){
+    return say('Folder memory needs this page served over http — opened straight from disk, ' +
+               'the browser gives it no shared storage.');
+  }
+
+  const handle = await il2Get();
+  if(!handle){
+    return say('No IL-2 folder set yet. <a href="index.html">Set one on the tools index</a> ' +
+               'and every tool here will find your files on its own.');
+  }
+  if(await il2Permission(handle) === 'granted'){ row.remove(); return onReady(handle); }
+
+  // Browsers drop folder access when they restart and regaining it needs a real
+  // click, so offer one rather than prompting unbidden.
+  const btn = document.createElement('button');
+  btn.className = 'tb-btn primary';
+  btn.textContent = 'Use saved folder';
+  btn.addEventListener('click', async () => {
+    let ok = false;
+    try{ ok = (await handle.requestPermission({ mode:'readwrite' })) === 'granted'; }
+    catch(err){ console.error(err); }
+    if(ok){ row.remove(); onReady(handle); }
+    else toast('Access was not granted — open the file manually instead.', true);
+  });
+  say('Saved folder <code>' + handle.name + '</code> — the browser needs one click to reconnect it.', btn);
+}
 const App = {
   text:null,          // the whole .Mission as a string
   parsed:null,
@@ -954,19 +1042,22 @@ function ingest(text, fileName){
   return true;
 }
 
-async function pickFolder(){
-  if(typeof window.showDirectoryPicker !== 'function'){
-    toast('This browser cannot open folders — use “Open a .Mission file…” instead. Chrome or Edge supports the folder flow.', true);
-    return;
-  }
-  let dir;
-  try{
-    dir = await window.showDirectoryPicker({ mode:'readwrite' });
-  }catch(err){
-    if(err && err.name === 'AbortError') return;
-    console.error(err);
-    toast('Could not open that folder.', true);
-    return;
+// `dir` is supplied when the folder came from the shared store rather than
+// from the picker, so the same loading path serves both.
+async function pickFolder(dir){
+  if(!dir){
+    if(typeof window.showDirectoryPicker !== 'function'){
+      toast('This browser cannot open folders — use “Open a .Mission file…” instead. Chrome or Edge supports the folder flow.', true);
+      return;
+    }
+    try{
+      dir = await window.showDirectoryPicker({ mode:'readwrite' });
+    }catch(err){
+      if(err && err.name === 'AbortError') return;
+      console.error(err);
+      toast('Could not open that folder.', true);
+      return;
+    }
   }
 
   // Accept either the data folder or the Missions folder inside it.
@@ -1232,6 +1323,12 @@ $('#tbStatus').textContent = (typeof window.showDirectoryPicker === 'function')
   : 'This browser cannot open folders; single-file mode with downloads will be used.';
 
 render();
+
+/* --- Use the folder set on the index page, if there is one --- */
+il2Connect($('#pathHints'), (dir) => {
+  toast('<span class="spinner"></span> Using your saved IL-2 folder…');
+  pickFolder(dir);
+});
 </script>
 </body>
 </html>

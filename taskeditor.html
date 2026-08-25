@@ -81,6 +81,27 @@ code{font-family:Consolas,Menlo,monospace;font-size:.92em;}
 .empty-state{border:1px dashed var(--border);border-radius:8px;padding:40px 32px;text-align:center;color:var(--text-dim);background:rgba(0,0,0,.15);}
 .empty-state h2{color:var(--text-bright);font-size:18px;margin-bottom:10px;letter-spacing:.3px;}
 .empty-state p{font-size:14px;line-height:1.6;max-width:620px;margin:0 auto 14px;}
+.saved-folder{
+  display:flex;align-items:center;gap:14px;justify-content:center;flex-wrap:wrap;
+  background:rgba(226,162,58,.08);border:1px solid rgba(226,162,58,.3);border-radius:6px;
+  padding:12px 16px;margin:0 auto 12px;max-width:640px;text-align:left;
+}
+.saved-folder span{font-size:13px;color:var(--text);}
+.saved-folder code{font-family:Consolas,Menlo,monospace;color:var(--text-bright);}
+.saved-folder a{color:var(--amber);}
+.saved-folder a:hover{color:var(--amber-bright);}
+.saved-list{max-width:640px;margin:0 auto 16px;text-align:left;}
+.saved-head{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--text-faint);margin-bottom:8px;}
+.saved-head code{font-family:Consolas,Menlo,monospace;text-transform:none;letter-spacing:0;}
+.saved-row{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;
+  background:var(--row-bg);border:1px solid var(--border);border-radius:4px;
+  padding:9px 13px;margin-bottom:5px;color:inherit;font-family:inherit;text-align:left;
+}
+.saved-row:hover{background:var(--row-bg-hover);border-color:var(--amber);}
+.saved-row .sr-name{font-size:14.5px;font-weight:700;color:var(--text-bright);}
+.saved-row:hover .sr-name{color:var(--amber-bright);}
+.saved-row .sr-date{font-size:11.5px;color:var(--text-faint);font-family:Consolas,Menlo,monospace;white-space:nowrap;}
 .path-hints{display:flex;flex-direction:column;gap:6px;margin:14px auto 18px;max-width:640px;text-align:left;}
 .path-hint{background:#1f1c18;border:1px solid var(--border);border-radius:4px;padding:7px 11px;font-size:11.5px;color:var(--text);font-family:Consolas,Menlo,monospace;display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .path-hint span{overflow-wrap:anywhere;}
@@ -201,30 +222,43 @@ code{font-family:Consolas,Menlo,monospace;font-size:.92em;}
    each aircraft carries its own nation. */
 .forms{display:grid;grid-template-columns:1fr 1fr;gap:0 22px;}
 @media (max-width:860px){.forms{grid-template-columns:1fr;gap:22px 0;}}
-.fside{border-top:2px solid var(--side-red);padding-top:0;}
-.fside.enemy{border-top-color:var(--side-blue);}
+/* Colour follows the nation you are flying for, not the column position. */
+.fside{border-top:2px solid var(--side-red);}
+.fside.pal-blue{border-top-color:var(--side-blue);}
 .fside-head{
   font-size:11px;letter-spacing:2.2px;text-transform:uppercase;font-weight:700;
-  padding:6px 10px 7px;background:rgba(181,66,60,.16);color:#f0c3bf;margin-bottom:10px;
+  padding:6px 10px 7px;margin-bottom:10px;
+  background:rgba(181,66,60,.16);color:#f0c3bf;
 }
-.fside.enemy .fside-head{background:rgba(77,127,181,.16);color:#c6dcf2;}
+.fside.pal-blue .fside-head{background:rgba(77,127,181,.16);color:#c6dcf2;}
 .fside-empty{font-size:12.5px;color:var(--text-faint);padding:4px 2px 10px;}
 
-.fcard{background:#211e1a;border:1px solid #000;border-radius:3px;padding:12px 15px 13px;margin-bottom:10px;}
+.fcard{background:#211e1a;border:1px solid #000;border-radius:3px;padding:12px 14px 13px;margin-bottom:10px;}
 .fcard h4{font-size:10.5px;letter-spacing:1.6px;text-transform:uppercase;color:var(--text-faint);font-weight:600;margin-bottom:9px;}
-.frow{display:flex;align-items:center;gap:10px;margin-bottom:7px;}
-.frow .glyph{font-size:16px;color:var(--text-dim);width:17px;text-align:center;flex-shrink:0;}
-.frow .ac{font-size:16.5px;color:var(--text-bright);font-weight:700;}
-.frow .nat{
-  font-size:10px;letter-spacing:.8px;font-weight:700;text-transform:uppercase;
+
+/* One block per aircraft group, so a formation holding several reads as several
+   aircraft rather than as a wall of text. */
+.fplane{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,.032);border:1px solid rgba(255,255,255,.06);
+  border-radius:3px;padding:8px 11px;margin-bottom:6px;
+}
+.fplane:last-of-type{margin-bottom:9px;}
+.fplane .glyph{font-size:15px;color:var(--text-dim);width:16px;text-align:center;flex-shrink:0;}
+.fplane .ac{font-size:16px;color:var(--text-bright);font-weight:700;}
+.fplane .nat{
+  font-size:9.5px;letter-spacing:.8px;font-weight:700;text-transform:uppercase;
   border:1px solid;border-radius:3px;padding:1px 6px;white-space:nowrap;
 }
-.frow .nat-red{color:#e79a94;border-color:rgba(181,66,60,.5);background:rgba(181,66,60,.14);}
-.frow .nat-blue{color:#a8c8ea;border-color:rgba(77,127,181,.5);background:rgba(77,127,181,.14);}
-.frow .nat-auto{color:var(--text-faint);border-color:var(--border);}
-.frow .cs{font-size:11.5px;color:var(--text-dim);font-family:Consolas,Menlo,monospace;}
-.frow .ai{font-size:13px;color:var(--amber);letter-spacing:1px;margin-left:auto;}
-.frow .qty{font-size:16.5px;color:var(--text-bright);font-weight:700;min-width:20px;text-align:right;}
+.fplane .nat-red{color:#e79a94;border-color:rgba(181,66,60,.5);background:rgba(181,66,60,.14);}
+.fplane .nat-blue{color:#a8c8ea;border-color:rgba(77,127,181,.5);background:rgba(77,127,181,.14);}
+/* Auto keeps the aircraft's own colour but stays visibly unset. */
+.fplane .nat-auto{color:var(--text-faint);border-color:var(--border);background:none;}
+.fplane .nat-auto.nat-red{color:#b8827d;border-color:rgba(181,66,60,.35);}
+.fplane .nat-auto.nat-blue{color:#7f9cba;border-color:rgba(77,127,181,.35);}
+.fplane .cs{font-size:11.5px;color:var(--text-dim);font-family:Consolas,Menlo,monospace;}
+.fplane .ai{font-size:13px;color:var(--amber);letter-spacing:1px;margin-left:auto;}
+.fplane .qty{font-size:16px;color:var(--text-bright);font-weight:700;min-width:20px;text-align:right;}
 .fmeta{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text-dim);border-top:1px solid rgba(255,255,255,.07);padding-top:8px;flex-wrap:wrap;}
 .fmeta b{color:var(--text-bright);font-weight:700;}
 .fmeta .sep{color:var(--text-faint);}
@@ -307,6 +341,7 @@ code{font-family:Consolas,Menlo,monospace;font-size:.92em;}
       <code>.json</code> it writes. Set the time, season and weather here — laid out
       the way the game lays them out — and load the file back in the Task Editor as normal.
     </p>
+    <div class="saved-list" id="savedList" style="display:none;"></div>
     <div class="path-hints" id="pathHints"></div>
     <button class="tb-btn primary" id="btnEmptyOpen" style="margin:0 auto;">＋ Open mission…</button>
   </div>
@@ -399,6 +434,20 @@ const PLANE_LABELS = {
 };
 const RED_COUNTRIES = [501, 502, 503];
 
+// Which side of the war an aircraft belongs to, used when a formation's country
+// is left on Auto and the file therefore says nothing. Taken from the Task
+// Editor's own two country tabs, plus the aircraft only the generator brings in.
+const PLANE_SIDE = {
+  mig15bis:'red', la11:'red', yak9p:'red', il10:'red', li2t:'red', tu2:'red', yak9s1:'red',
+  f80c10:'blue', f84e:'blue', f86a5:'blue', f51d:'blue', b29:'blue', c47b:'blue', p51d15:'blue',
+};
+function groupSide(g){
+  const w = g.worldObjectSetup || {};
+  const c = w.country;
+  if(c !== undefined && c !== -1) return RED_COUNTRIES.includes(c) ? 'red' : 'blue';
+  return PLANE_SIDE[planeKey(w.objectCfg)] || null;
+}
+
 // "PILOT AI LEVEL" in game. Ace is confirmed as 4 by a saved mission showing Ace
 // selected while storing aiLevel 4. The menu also offers Random, whose stored
 // value has not been identified.
@@ -475,6 +524,107 @@ const PRESET_PATHS = [
   'C:\\Steam\\steamapps\\common\\IL2Series\\data\\NSData\\UserData\\QuickMission\\Presets',
   'D:\\Steam\\steamapps\\common\\IL2Series\\data\\NSData\\UserData\\QuickMission\\Presets',
 ];
+
+/* ====================================================================
+   The shared IL-2 folder, set once on the tools index page.
+
+   A directory handle is structured-cloneable, so it lives in IndexedDB and
+   every tool on this origin can reuse the same one. This tool opens a single
+   file rather than a folder, so it uses the stored handle to walk to the
+   Presets directory and start the picker there — saving the trip through
+   four levels of NSData every time.
+   ==================================================================== */
+const IL2_DB = 'il2-korea-tools', IL2_STORE = 'handles', IL2_KEY = 'dataDir';
+
+function il2db(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IL2_DB, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(IL2_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = () => reject(req.error);
+  });
+}
+async function il2Get(){
+  try{
+    const db = await il2db();
+    return await new Promise((resolve, reject) => {
+      const tx  = db.transaction(IL2_STORE, 'readonly');
+      const req = tx.objectStore(IL2_STORE).get(IL2_KEY);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror   = () => reject(req.error);
+    });
+  }catch(err){ return null; }
+}
+
+async function il2Permission(handle){
+  if(!handle || !handle.queryPermission) return 'denied';
+  try{ return await handle.queryPermission({ mode:'readwrite' }); }
+  catch(err){ return 'denied'; }
+}
+
+// Renders the reconnect affordance above `container` and calls onReady with the
+// folder once it is usable — straight away when access is already granted, or
+// after a click when the browser has dropped it, which it does on restart.
+async function il2Connect(container, onReady){
+  const row = document.createElement('div');
+  row.className = 'saved-folder';
+  const say = (html, btn) => {
+    row.innerHTML = '<span>' + html + '</span>';
+    if(btn) row.appendChild(btn);
+    if(!row.parentNode) container.parentNode.insertBefore(row, container);
+  };
+
+  // Opened straight off disk, a file:// document gets no shared storage, so the
+  // folder set on the index page is invisible here. Silence in that case is
+  // indistinguishable from a broken feature, so say it plainly.
+  try{ await il2db(); }
+  catch(err){
+    return say('Folder memory needs this page served over http — opened straight from disk, ' +
+               'the browser gives it no shared storage.');
+  }
+
+  const handle = await il2Get();
+  if(!handle){
+    return say('No IL-2 folder set yet. <a href="index.html">Set one on the tools index</a> ' +
+               'and every tool here will find your files on its own.');
+  }
+  if(await il2Permission(handle) === 'granted'){ row.remove(); return onReady(handle); }
+
+  // Browsers drop folder access when they restart and regaining it needs a real
+  // click, so offer one rather than prompting unbidden.
+  const btn = document.createElement('button');
+  btn.className = 'tb-btn primary';
+  btn.textContent = 'Use saved folder';
+  btn.addEventListener('click', async () => {
+    let ok = false;
+    try{ ok = (await handle.requestPermission({ mode:'readwrite' })) === 'granted'; }
+    catch(err){ console.error(err); }
+    if(ok){ row.remove(); onReady(handle); }
+    else toast('Access was not granted — open the file manually instead.', true);
+  });
+  say('Saved folder <code>' + handle.name + '</code> — the browser needs one click to reconnect it.', btn);
+}
+// Every saved Task Editor mission in the folder, newest first. Listing them
+// beats pointing the OS picker at the folder: startIn is only a hint, and
+// Chrome overrides it with whatever directory that picker last used.
+async function il2ListPresets(dir){
+  const out = [];
+  try{
+    let d = dir;
+    for(const seg of ['NSData','UserData','QuickMission','Presets']) d = await d.getDirectoryHandle(seg);
+    for await (const [name, handle] of d.entries()){
+      if(handle.kind !== 'file' || !/\.json$/i.test(name)) continue;
+      const file = await handle.getFile();
+      let title = name.replace(/_\d{4}-\d{2}-\d{2}_.*$/, '');
+      try{
+        const q = JSON.parse(await file.text()).qmission;
+        if(q && q.internalName) title = q.internalName;
+      }catch(err){ /* not a preset — keep the filename as its title */ }
+      out.push({ name, title, handle, mtime:file.lastModified });
+    }
+  }catch(err){ return []; }
+  return out.sort((a,b)=> b.mtime - a.mtime);
+}
 
 /* ------------------------------ State ------------------------------ */
 
@@ -801,20 +951,30 @@ function renderFormationCard(f, i, side, total){
   card.className = 'fcard ' + side;
   let html = `<h4>${formationTitle(side, i, total)}</h4>`;
 
+  // Each aircraft group gets its own block. A formation can hold several and
+  // stacking them as bare rows runs them together.
   for(const g of (f.groups || [])){
     const w = g.worldObjectSetup || {};
     const country = w.country === undefined ? -1 : w.country;
     const ai = AI_LEVELS[g.aiLevel] || (g.aiLevel === -1 ? 'Random' : 'level ' + g.aiLevel);
     const cs = w.callsign > 0 ? (CALLSIGN_NAMES[w.callsign] || w.callsign) : null;
-    // The nation is shown as a tinted word rather than by colouring the card:
-    // a formation's side and its aircraft's nationality are different things,
-    // and a Skirmish will happily put DPRK aircraft on the opposing side.
-    const natClass = country === -1 ? 'nat-auto' : (RED_COUNTRIES.includes(country) ? 'nat-red' : 'nat-blue');
+    // The nation badge is per aircraft, never per card: a Skirmish will happily
+    // put DPRK aircraft on the side opposing you. When the country is left on
+    // Auto the badge still takes the aircraft's own colour, so the reading
+    // stays consistent even though the file has not committed to a country.
+    const side = groupSide(g);
+    const natClass = country === -1
+      ? 'nat-auto' + (side ? ' nat-' + side : '')
+      : 'nat-' + (RED_COUNTRIES.includes(country) ? 'red' : 'blue');
+    const natTitle = country === -1
+      ? `Country not set — the generator picks one. ${planeName(w.objectCfg)} flies for the ` +
+        (side === 'red' ? 'North Korea / Soviet' : 'US') + ' side.'
+      : 'Country ' + country;
     html +=
-      `<div class="frow">` +
+      `<div class="fplane">` +
         `<span class="glyph">✈</span>` +
         `<span class="ac">${planeName(w.objectCfg)}</span>` +
-        `<span class="nat ${natClass}">${COUNTRY_NAMES[country] || country}</span>` +
+        `<span class="nat ${natClass}" title="${natTitle}">${COUNTRY_NAMES[country] || country}</span>` +
         (cs ? `<span class="cs">${cs}</span>` : '') +
         `<span class="ai" title="Pilot AI level: ${ai}">${AI_GLYPHS[g.aiLevel] || (g.aiLevel === -1 ? '⁇' : g.aiLevel)}</span>` +
         `<span class="qty">${g.quantity}</span>` +
@@ -840,10 +1000,17 @@ function renderForms(){
   const box = $('#forms');
   box.innerHTML = '';
 
+  // Your side takes the colour of the aircraft you are actually flying, and the
+  // opposing side takes the other one — fly a Sabre and you are blue, whatever
+  // the rest of the mission is made of.
+  const firstFriendly = (m.friendly || []).flatMap(f => f.groups || [])[0];
+  const yourSide = (firstFriendly && groupSide(firstFriendly)) || 'red';
+  const palette = { friendly: yourSide, enemy: yourSide === 'red' ? 'blue' : 'red' };
+
   for(const [side, heading] of [['friendly','Friendly'], ['enemy','Enemy']]){
     const arr = m[side] || [];
     const col = el('div');
-    col.className = 'fside ' + side;
+    col.className = 'fside ' + side + ' pal-' + palette[side];
     col.innerHTML = `<div class="fside-head">${heading}</div>`;
     if(!arr.length){
       const p = el('div');
@@ -1146,6 +1313,33 @@ window.addEventListener('beforeunload', e=>{
 });
 
 renderAll();
+
+/* --- Missions from the folder set on the index page --- */
+il2Connect($('#pathHints'), async (dir) => {
+  const presets = await il2ListPresets(dir);
+  if(!presets.length) return;
+
+  const box = $('#savedList');
+  box.style.display = '';
+  box.innerHTML = `<div class="saved-head">Your saved missions — ${presets.length} in <code>${dir.name}</code></div>`;
+  for(const p of presets){
+    const b = el('button');
+    b.className = 'saved-row';
+    b.innerHTML = `<span class="sr-name">${p.title}</span>` +
+      `<span class="sr-date">${new Date(p.mtime).toLocaleString()}</span>`;
+    b.addEventListener('click', async ()=>{
+      try{
+        const file = await p.handle.getFile();
+        loadText(await file.text(), file.name, p.handle, 'fsapi');
+      }catch(err){
+        console.error(err);
+        toast('Could not read that mission — has it been moved?', true);
+      }
+    });
+    box.appendChild(b);
+  }
+  $('#pathHints').style.display = 'none';   // the manual paths are moot now
+});
 </script>
 </body>
 </html>
