@@ -362,7 +362,7 @@ button{font-family:inherit;cursor:pointer;}
 
   <div class="empty-state" id="emptyState">
     <h2>Open a startup.cfg file to begin</h2>
-    <p>Browsers can't scan your PC for files on their own for security reasons — click <b>Open startup.cfg…</b> above and browse to your install folder. Set your IL-2 folder on the <a href="index.html" style="color:var(--amber);">tools index</a> and this page will open it for you instead.</p>
+    <p>Browsers can't scan your PC for files on their own for security reasons — click <b>Open startup.cfg…</b> above and browse to your install folder. You only need to do that once: this page remembers the file and reopens it on every later visit.</p>
     <p style="margin-bottom:6px;">Common locations to check:</p>
     <div class="path-hints" id="pathHints"></div>
     <button class="tb-btn primary" id="btnEmptyOpen">＋ Open startup.cfg…</button>
@@ -1220,6 +1220,9 @@ async function openViaFsApi(){
     const text = await file.text();
     App.lastHandle = handle;
     promptAddInstall({ mode:'fsapi', handle, fileName:file.name, text });
+    // Remember this exact file so the next visit opens it without asking. The
+    // picker is the only route to a .cfg handle, so this is the one chance.
+    il2PutKey(IL2_CFG_KEY, handle).catch(err => console.warn('Could not remember the file:', err));
   }catch(err){
     console.error(err);
     toast('Could not read that file.', true);
@@ -1458,6 +1461,33 @@ renderPathHints($('#pathHints'));
    ==================================================================== */
 const IL2_DB = 'il2-korea-tools', IL2_STORE = 'handles', IL2_KEY = 'dataDir';
 
+/* Chrome will not surface .cfg files through a directory handle: they are
+   filtered out of entries() and getFileHandle rejects the name with
+   "Name is not allowed". The shared IL-2 folder therefore cannot reach
+   startup.cfg however it is asked. The file picker can, so the handle it
+   returns is remembered here under its own key and reused from then on. */
+const IL2_CFG_KEY = 'graphicsStartupCfg';
+
+async function il2PutKey(key, handle){
+  const db = await il2db();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IL2_STORE, 'readwrite');
+    tx.objectStore(IL2_STORE).put(handle, key);
+    tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+  });
+}
+async function il2GetKey(key){
+  try{
+    const db = await il2db();
+    return await new Promise((resolve, reject) => {
+      const tx  = db.transaction(IL2_STORE, 'readonly');
+      const req = tx.objectStore(IL2_STORE).get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror   = () => reject(req.error);
+    });
+  }catch(err){ return null; }
+}
+
 function il2db(){
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(IL2_DB, 1);
@@ -1539,42 +1569,65 @@ async function il2Connect(container, onReady){
 }
 // startup.cfg sits directly in the data folder, so once the folder is usable
 // there is nothing left to ask: open it.
-// Enumerate the folder and use the handles the iterator returns, which is what
-// the career and mission tools do. Asking for the file by name with
-// getFileHandle is what failed here, with 'Name is not allowed'.
-il2Connect($('#pathHints'), async (dir) => {
-  if(App.installs.length) return;               // something is already open
-
-  const cfgs = [];
-  for await (const [name, h] of dir.entries()){
-    if(h.kind === 'file' && /\.cfg$/i.test(name)) cfgs.push({ name, handle:h });
-  }
-  cfgs.sort((x,y)=> x.name.localeCompare(y.name));
-
-  const open = async (entry) => {
-    const file = await entry.handle.getFile();
-    App.lastHandle = entry.handle;
-    promptAddInstall({ mode:'fsapi', handle:entry.handle, fileName:file.name, text: await file.text() });
+/* Reopen the startup.cfg the picker gave us last time. The shared IL-2 folder
+   is no use here — Chrome hides .cfg files from directory handles entirely —
+   so this tool remembers the file itself instead. */
+(async () => {
+  const container = $('#pathHints');
+  const row = el('div', 'saved-folder');
+  const say = (html, btn) => {
+    row.innerHTML = '<span>' + html + '</span>';
+    if(btn) row.appendChild(btn);
+    if(!row.parentNode) container.parentNode.insertBefore(row, container);
   };
 
-  const startup = cfgs.find(c => c.name.toLowerCase() === 'startup.cfg');
-  if(startup) return open(startup);
-
-  if(!cfgs.length) throw new Error('that folder contains no .cfg files at all');
-
-  // No startup.cfg by that name, but the folder has config files — list them
-  // so one click opens whichever is the right one.
-  const box = el('div', 'saved-list');
-  box.innerHTML = '<div class="saved-head">Config files in <code>' + dir.name + '</code></div>';
-  for(const c of cfgs){
-    const b = el('button', 'saved-row');
-    b.innerHTML = '<span class="sr-name">' + c.name + '</span>';
-    b.addEventListener('click', ()=> open(c).catch(err => toast('Could not open ' + c.name + ' — ' + err.message, true)));
-    box.appendChild(b);
+  try{ await il2db(); }
+  catch(err){
+    return say('Remembering your startup.cfg needs this page served over http — ' +
+               'opened straight from disk, the browser gives it no storage.');
   }
-  const hints = $('#pathHints');
-  hints.parentNode.insertBefore(box, hints);
-});
+
+  const handle = await il2GetKey(IL2_CFG_KEY);
+  if(!handle){
+    return say('Open your <code>startup.cfg</code> once and this page will reopen it ' +
+               'automatically from then on. Chrome will not let a folder reach ' +
+               '<code>.cfg</code> files, so it has to be picked directly the first time.');
+  }
+
+  const load = async () => {
+    const file = await handle.getFile();
+    App.lastHandle = handle;
+    promptAddInstall({ mode:'fsapi', handle, fileName:file.name, text: await file.text() });
+    row.remove();
+  };
+
+  let perm = 'denied';
+  try{ perm = await handle.queryPermission({ mode:'readwrite' }); }catch(err){}
+
+  if(perm === 'granted'){
+    try{ return await load(); }
+    catch(err){
+      console.error('Reopening the remembered startup.cfg failed:', err);
+      return say('Could not reopen the remembered <code>startup.cfg</code> — <b>' +
+                 (err && err.name ? err.name : 'Error') + '</b>: ' +
+                 (err && err.message ? err.message : String(err)) +
+                 '. Open it again below and it will be remembered afresh.');
+    }
+  }
+
+  // Browsers drop file access when they restart; one click restores it.
+  const btn = el('button', 'tb-btn primary');
+  btn.textContent = 'Open remembered startup.cfg';
+  btn.addEventListener('click', async () => {
+    let ok = false;
+    try{ ok = (await handle.requestPermission({ mode:'readwrite' })) === 'granted'; }
+    catch(err){ console.error(err); }
+    if(!ok) return toast('Access was not granted — open the file manually instead.', true);
+    try{ await load(); }
+    catch(err){ toast('Could not reopen it: ' + err.message, true); }
+  });
+  say('Remembered <code>startup.cfg</code> — the browser needs one click to reopen it.', btn);
+})();
 
 window.addEventListener('beforeunload', (e)=>{
   if(App.installs.some(i=>i.dirty)){

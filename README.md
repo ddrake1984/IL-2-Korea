@@ -33,13 +33,25 @@ What each tool does with it:
 
 | Tool | With the folder set |
 |---|---|
-| Graphics Configurator | opens your `startup.cfg` on arrival, no dialog |
 | Career File Viewer | lists every career in `data\Career` to pick from |
 | Task Editor Missions | lists your saved missions, newest first |
 | Cooperative Converter | loads your generated mission on arrival |
 
 The manual file and folder pickers stay exactly where they were, so nothing
 depends on this.
+
+### Why the Graphics Configurator is different
+
+It is not in that table, because a shared folder cannot reach `startup.cfg`.
+Chrome removes `.cfg` files from a directory handle entirely — they do not
+appear in `entries()`, and asking for one by name fails with
+`TypeError: Name is not allowed`. Listing the real folder next to what the
+browser reports shows the same list with precisely the `.cfg` files cut out.
+
+The file picker is not subject to that, so the Graphics Configurator remembers
+the **file** rather than the folder: open your `startup.cfg` once and it stores
+that handle, then reopens it on every later visit. As with the folder, browsers
+drop file access on restart, so occasionally it asks for one click.
 
 **Clear** forgets the folder so you can choose a different one. It changes
 nothing on disk — it only wipes what the browser remembers.
