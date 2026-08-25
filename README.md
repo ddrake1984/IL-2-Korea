@@ -1,23 +1,24 @@
 # IL-2 Korea Tools
 
-Two self-contained, offline HTML tools for IL-2 Sturmovik: Korea. Both run
-entirely in your browser — nothing is uploaded, and no internet connection is
-needed once the page is open.
+Self-contained, offline HTML tools for IL-2 Sturmovik: Korea. Each runs entirely
+in your browser — nothing is uploaded, and no internet connection is needed once
+the page is open.
 
 | Tool | File | What it does |
 |---|---|---|
-| Graphics Configurator | `index.html` | Edits the `[KEY = graphics]` section of `startup.cfg` |
+| Landing page | `index.html` | Index of the tools below |
+| Graphics Configurator | `graphics.html` | Edits the `[KEY = graphics]` section of `startup.cfg` |
 | Career File Viewer | `career.html` | Reads a pilot career `.db` and decodes it |
 
 ---
 
-## Graphics Configurator — `index.html`
+## Graphics Configurator — `graphics.html`
 
 Edits the `[KEY = graphics]` section of an IL-2 Korea `startup.cfg` file, laid
 out to visually match the in-game Graphics Settings menu, including the
 Extended & Hidden Settings section.
 
-1. Open `index.html` in any modern desktop browser (Chrome, Edge, Firefox).
+1. Open `graphics.html` in any modern desktop browser (Chrome, Edge, Firefox).
 2. Load your `startup.cfg` file (usually in your IL-2 Korea installation's `data` folder).
 3. Adjust settings using the same layout and options as the in-game menu.
 4. Save the file back out — only the graphics section is modified; every other
@@ -83,9 +84,10 @@ archive the game never unpacks to disk.
 
 ## Live version
 
-Both tools are served by GitHub Pages — nothing to download, nothing to set up:
+GitHub Pages serves the tools directly — nothing to download, nothing to set up:
 
-- <https://ddrake1984.github.io/IL-2-Korea/> — Graphics Configurator
+- <https://ddrake1984.github.io/IL-2-Korea/> — index of all tools
+- <https://ddrake1984.github.io/IL-2-Korea/graphics.html> — Graphics Configurator
 - <https://ddrake1984.github.io/IL-2-Korea/career.html> — Career File Viewer
 
 ## Repository

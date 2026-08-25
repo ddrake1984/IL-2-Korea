@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IL-2 Sturmovik — Startup.cfg Graphics Configurator</title>
+<style>
+:root{
+  --bg:#26221f;
+  --bg-panel:#2c2823;
+  --bg-toolbar:#1e1b18;
+  --bg-row-hover:rgba(255,255,255,.045);
+  --bg-popover:#1c1916;
+  --border:rgba(255,255,255,.09);
+  --row-bg:#332e27;
+  --row-bg-hover:#3f382d;
+  --text-bright:#efe8da;
+  --text:#c7bfae;
+  --text-dim:#8a8377;
+  --text-faint:#5f594e;
+  --amber:#d9a44b;
+  --amber-bright:#f0bd63;
+  --warn:#e2a23a;
+  --danger:#c85c4a;
+  --good:#7fae6d;
+  --accent:#c98b34;
+  font-size:16.5px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:"Bahnschrift","Segoe UI Semibold","Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+body{background:
+  radial-gradient(ellipse at 50% -10%, #34302a 0%, transparent 60%),
+  var(--bg);
+  min-height:100vh;
+  padding-bottom:80px;
+}
+h1,h2,h3{font-weight:700;margin:0;}
+button{font-family:inherit;cursor:pointer;}
+::selection{background:var(--amber);color:#221c12;}
+
+/* ---------- Toolbar ---------- */
+.toolbar{
+  background:var(--bg-toolbar);
+  border-bottom:1px solid var(--border);
+  padding:10px 24px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  position:sticky;top:0;z-index:40;
+  box-shadow:0 4px 14px rgba(0,0,0,.35);
+}
+.app-brand{display:flex;align-items:center;gap:10px;margin-right:8px;text-decoration:none;color:inherit;border-radius:4px;padding:2px 6px;margin-left:-6px;}
+.app-brand:hover{background:rgba(255,255,255,.05);}
+.app-brand:hover .app-brand-text b{color:var(--amber-bright);}
+.app-brand .plane{font-size:20px;filter:saturate(0) brightness(1.6) sepia(1) hue-rotate(-10deg) saturate(3);}
+.app-brand-text{display:flex;flex-direction:column;line-height:1.1;}
+.app-brand-text b{color:var(--text-bright);font-size:14px;letter-spacing:.5px;}
+.app-brand-text span{color:var(--text-faint);font-size:11px;}
+.tb-sep{width:1px;align-self:stretch;background:var(--border);margin:0 4px;}
+.tb-btn{
+  background:#33302a;border:1px solid var(--border);color:var(--text-bright);
+  padding:7px 13px;border-radius:4px;font-size:13.5px;font-weight:600;
+  display:flex;align-items:center;gap:6px;letter-spacing:.3px;
+}
+.tb-btn:hover{background:#3c3931;border-color:rgba(255,255,255,.2);}
+.tb-btn:active{transform:translateY(1px);}
+.tb-btn.primary{background:linear-gradient(#c9902f,#a9761f);border-color:#8a611a;color:#231a0c;}
+.tb-btn.primary:hover{background:linear-gradient(#d69c39,#b58026);}
+.tb-btn.primary:disabled{background:#4a463d;color:var(--text-faint);border-color:var(--border);cursor:not-allowed;}
+.tb-btn:disabled{opacity:.45;cursor:not-allowed;}
+.tb-select{
+  background:#33302a;border:1px solid var(--border);color:var(--text-bright);
+  padding:7px 10px;border-radius:4px;font-size:13.5px;font-weight:600;min-width:170px;
+}
+.dirty-dot{width:7px;height:7px;border-radius:50%;background:var(--amber-bright);display:inline-block;box-shadow:0 0 6px var(--amber-bright);}
+.tb-status{font-size:11.5px;color:var(--text-faint);margin-left:auto;display:flex;align-items:center;gap:8px;}
+.tb-status b{color:var(--text);}
+
+/* ---------- Layout ---------- */
+.wrap{max-width:980px;margin:0 auto;padding:28px 24px 0;}
+.page-title{display:flex;align-items:center;gap:10px;margin-bottom:22px;}
+.page-title .corner{color:var(--text-faint);display:inline-flex;}
+.page-title .corner svg{display:block;}
+.page-title h1{font-size:28px;letter-spacing:2px;color:var(--text-bright);text-transform:uppercase;}
+.page-title .sub{margin-left:14px;font-size:13px;color:var(--text-faint);font-weight:400;padding-top:4px;}
+
+.empty-state{
+  border:1px dashed var(--border);border-radius:8px;padding:40px 32px;text-align:center;
+  color:var(--text-dim);margin-bottom:24px;background:rgba(0,0,0,.15);
+}
+.empty-state h2{color:var(--text-bright);font-size:18px;margin-bottom:10px;text-transform:none;letter-spacing:.3px;}
+.empty-state p{font-size:14px;line-height:1.6;max-width:560px;margin:0 auto 14px;}
+.path-hints{display:flex;flex-direction:column;gap:6px;margin:14px auto 18px;max-width:520px;text-align:left;}
+.path-hint{
+  background:#1f1c18;border:1px solid var(--border);border-radius:4px;padding:7px 11px;font-size:11.5px;
+  color:var(--text);font-family:Consolas,Menlo,monospace;display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;
+}
+.path-hint span{overflow-wrap:anywhere;}
+.path-hint button{background:none;border:none;color:var(--amber);font-size:11px;font-weight:700;flex-shrink:0;cursor:pointer;}
+.path-hint button:hover{color:var(--amber-bright);}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 48px;}
+@media (max-width:880px){.grid{grid-template-columns:1fr;}}
+
+.group{margin-bottom:22px;}
+.group h3{
+  font-size:14.5px;text-transform:uppercase;letter-spacing:2px;color:var(--text-bright);
+  padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:2px;
+}
+.row{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:5px 10px;margin-bottom:3px;background:var(--row-bg);border-radius:4px;cursor:pointer;
+}
+.row:hover{background:var(--row-bg-hover);}
+.row.disabled{opacity:.42;pointer-events:none;}
+.row-label{display:flex;align-items:center;gap:7px;font-size:14.5px;color:var(--text);}
+.row:hover .row-label{color:var(--text-bright);}
+.info-btn{
+  width:17.5px;height:17.5px;border-radius:50%;border:1px solid var(--text-faint);color:var(--text-faint);
+  background:none;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-weight:400;cursor:pointer;
+}
+.info-btn:hover{border-color:var(--amber);color:var(--amber);}
+.row-warn{
+  width:17.5px;height:17.5px;border-radius:50%;border:1px solid var(--warn);color:var(--warn);
+  font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:400;
+}
+.row-control{position:relative;min-width:0;height:26px;display:flex;align-items:center;justify-content:flex-end;flex-shrink:0;}
+
+/* select control styled like game dropdown */
+.gsel{
+  background:none;border:none;color:var(--text-bright);font-size:14.5px;font-weight:600;line-height:26px;
+  height:26px;padding:0 20px 0 8px;display:flex;align-items:center;gap:6px;position:relative;min-width:110px;justify-content:flex-end;
+  cursor:pointer;
+}
+.gsel .chev{color:var(--text-dim);font-size:28px;font-weight:700;}
+.gsel:hover{color:var(--amber-bright);}
+.gsel:hover .chev{color:var(--amber-bright);}
+.gsel .warn-ico{color:var(--warn);font-size:16.25px;font-weight:400;}
+.gsel .approx{color:var(--text-faint);font-weight:400;margin-right:2px;}
+
+.gsel-menu{
+  position:absolute;top:calc(100% + 4px);right:0;background:var(--bg-popover);
+  border:1px solid var(--border);border-radius:5px;min-width:190px;box-shadow:0 10px 30px rgba(0,0,0,.55);
+  z-index:60;padding:4px;max-height:280px;overflow-y:auto;
+}
+.gsel-menu .opt{
+  display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:4px;font-size:14px;color:var(--text);
+  cursor:pointer;
+}
+.gsel-menu .opt:hover{background:#d9c9a0;color:#221c12;}
+.gsel-menu .opt .ck{width:12px;color:var(--amber);font-size:11px;}
+.gsel-menu .opt:hover .ck{color:#7a4d10;}
+.gsel-menu .opt .warn-ico{margin-left:auto;color:var(--warn);font-size:17.5px;font-weight:400;}
+.gsel-menu .opt:hover .warn-ico{color:#a15a1f;}
+
+/* toggle */
+.gtoggle{
+  display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--text-bright);
+  background:none;border:none;padding:0;
+}
+.gtoggle .track{
+  width:34px;height:18px;border-radius:10px;background:#413c33;position:relative;border:1px solid var(--border);
+}
+.gtoggle .track .knob{
+  width:14px;height:14px;border-radius:50%;background:var(--text-dim);position:absolute;top:1px;left:1px;transition:.15s;
+}
+.gtoggle.on .track{background:#5a4322;border-color:#8a611a;}
+.gtoggle.on .track .knob{left:16px;background:var(--amber-bright);}
+
+/* slider */
+.gslider{height:26px;display:flex;align-items:center;gap:0;min-width:190px;justify-content:flex-end;padding-right:50px;}
+.gslider input[type=range]{
+  -webkit-appearance:none;flex:none;width:100px;height:5px;background:#463f34;border-radius:2px;outline:none;
+}
+.gslider input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--amber-bright);
+  border:2px solid #2c2823;cursor:pointer;
+}
+.gslider input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--amber-bright);border:2px solid #2c2823;cursor:pointer;}
+.gslider .val{font-size:14px;line-height:26px;color:var(--text-bright);font-weight:700;min-width:56px;text-align:right;}
+
+/* number input */
+.gnum{
+  background:#1f1c18;border:1px solid var(--border);color:var(--text-bright);border-radius:4px;
+  height:26px;padding:0 8px;font-size:13.5px;width:84px;text-align:right;font-family:inherit;
+}
+.gnum:focus{outline:none;border-color:var(--amber);}
+.gnum.wide{width:120px;}
+/* native spin buttons are replaced by the .gstep chevrons below */
+.gnum::-webkit-outer-spin-button,.gnum::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+.gnum{-moz-appearance:textfield;}
+/* unit sits outside the aligned control block entirely (see .gstepper) so it
+   never affects where the up-chevron lands. Positioned from the up-chevron's own
+   edge (gstepper's width minus its 20px reserved padding), not gstepper's outer
+   edge, so it has the full row width to breathe in instead of being squeezed into
+   that 20px gap. */
+.gunit{font-size:12px;color:var(--text-faint);position:absolute;left:calc(100% - 20px);margin-left:6px;white-space:nowrap;}
+
+/* number stepper (chevron either side of the box, instead of overlapping native arrows).
+   No fixed width on .gstep/.gstepper — sized the same way .gsel's chevron is — so the
+   up-chevron is the true last flex item and lands flush 20px inside the row-control's
+   right edge, exactly matching where a dropdown's chevron sits (.gsel has the same
+   20px right padding for its own chevron). */
+.gstepper{position:relative;display:flex;align-items:center;gap:3px;padding-right:20px;}
+.gstep{
+  height:26px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  background:none;border:none;color:var(--text-dim);font-size:28px;font-weight:700;cursor:pointer;padding:0;
+}
+.gstep:hover{color:var(--amber-bright);}
+.gstep:active{color:var(--amber);}
+
+/* resolution combo */
+.res-row{display:flex;align-items:center;gap:6px;}
+
+/* Extended accordion */
+.ext-toggle{
+  width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--bg-panel);
+  border:1px solid var(--border);border-radius:6px;padding:13px 18px;margin-top:8px;color:var(--text-bright);
+  font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+}
+.ext-toggle .arrow{transition:.15s;color:var(--text-faint);}
+.ext-toggle.open .arrow{transform:rotate(90deg);}
+.ext-panel{display:none;padding:18px 4px 4px;}
+.ext-panel.open{display:block;}
+.ext-note{
+  font-size:12px;color:var(--text-dim);background:rgba(217,164,75,.08);border:1px solid rgba(217,164,75,.25);
+  border-radius:5px;padding:10px 12px;margin-bottom:18px;line-height:1.55;
+}
+.ext-note b{color:var(--amber);}
+.ext-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 44px;}
+@media (max-width:880px){.ext-grid{grid-template-columns:1fr;}}
+
+/* Drawer */
+.drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:80;display:none;}
+.drawer-overlay.open{display:block;}
+.drawer{
+  position:fixed;top:0;right:0;bottom:0;width:400px;max-width:92vw;background:#211d19;
+  border-left:1px solid var(--border);z-index:90;transform:translateX(100%);transition:transform .2s ease;
+  display:flex;flex-direction:column;box-shadow:-14px 0 40px rgba(0,0,0,.5);
+}
+.drawer.open{transform:translateX(0);}
+.drawer-head{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+.drawer-head h3{font-size:15px;color:var(--text-bright);letter-spacing:.3px;}
+.drawer-head .key{font-size:10.5px;color:var(--text-faint);font-family:Consolas,Menlo,monospace;margin-top:4px;}
+.drawer-close{background:none;border:none;color:var(--text-faint);font-size:20px;line-height:1;flex-shrink:0;}
+.drawer-close:hover{color:var(--text-bright);}
+.drawer-body{padding:18px 20px;overflow-y:auto;flex:1;font-size:13px;line-height:1.65;color:var(--text);}
+.drawer-body p{margin:0 0 12px;}
+.drawer-tag{
+  display:inline-block;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;
+  padding:3px 8px;border-radius:3px;margin-bottom:12px;
+}
+.drawer-tag.obscure{background:rgba(200,92,74,.15);color:var(--danger);border:1px solid rgba(200,92,74,.4);}
+.drawer-tag.vr{background:rgba(122,150,209,.15);color:#7a96d1;border:1px solid rgba(122,150,209,.4);}
+.drawer-tag.perf{background:rgba(127,174,109,.15);color:var(--good);border:1px solid rgba(127,174,109,.4);}
+.drawer-callout{
+  display:flex;gap:10px;align-items:flex-start;border-radius:6px;padding:11px 13px;margin-bottom:14px;font-size:12.5px;line-height:1.55;
+}
+.drawer-callout.warn{background:rgba(226,162,58,.10);border:1px solid rgba(226,162,58,.35);color:var(--text-bright);}
+.drawer-callout.warn .cicon{color:var(--warn);border-color:var(--warn);}
+.drawer-callout.restart{background:rgba(122,150,209,.10);border:1px solid rgba(122,150,209,.35);color:var(--text-bright);}
+.drawer-callout.restart .cicon{color:#7a96d1;border-color:#7a96d1;}
+.drawer-callout .cicon{
+  width:18px;height:18px;border-radius:50%;border:1.5px solid;display:flex;align-items:center;justify-content:center;
+  font-size:11px;flex-shrink:0;font-weight:700;
+}
+.drawer-diagram{margin:6px 0 16px;background:#191613;border:1px solid var(--border);border-radius:6px;padding:12px;}
+.drawer-values{font-size:11.5px;color:var(--text-dim);background:#191613;border:1px solid var(--border);border-radius:5px;padding:10px 12px;margin-top:4px;}
+.drawer-values div{display:flex;justify-content:space-between;padding:2px 0;}
+.drawer-learn{display:inline-flex;align-items:center;gap:5px;color:var(--amber);font-size:12px;text-decoration:none;font-weight:600;margin-top:6px;}
+.drawer-learn:hover{color:var(--amber-bright);}
+.drawer-cfg{font-family:Consolas,Menlo,monospace;font-size:11px;color:var(--text-dim);background:#191613;padding:2px 6px;border-radius:3px;}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal{background:#221e1a;border:1px solid var(--border);border-radius:8px;width:100%;max-width:520px;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.modal-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.modal-head h3{font-size:14px;color:var(--text-bright);letter-spacing:.5px;text-transform:uppercase;}
+.modal-close{background:none;border:none;color:var(--text-faint);font-size:20px;}
+.modal-close:hover{color:var(--text-bright);}
+.modal-body{padding:18px 20px;overflow-y:auto;font-size:13px;color:var(--text);}
+.modal-foot{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+.field-label{font-size:11.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin:0 0 6px;display:block;}
+.field-input{width:100%;background:#1a1712;border:1px solid var(--border);color:var(--text-bright);border-radius:4px;padding:9px 10px;font-size:13px;font-family:inherit;margin-bottom:14px;}
+.field-input:focus{outline:none;border-color:var(--amber);}
+.preset-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--border);border-radius:5px;margin-bottom:8px;background:#1c1915;}
+.preset-item .pname{font-weight:700;color:var(--text-bright);font-size:13px;}
+.preset-item .pmeta{font-size:10.5px;color:var(--text-faint);margin-top:2px;}
+.preset-actions{display:flex;gap:6px;}
+.preset-actions button{background:#332e26;border:1px solid var(--border);color:var(--text);font-size:11px;padding:5px 9px;border-radius:4px;}
+.preset-actions button:hover{color:var(--text-bright);border-color:var(--amber);}
+.preset-actions button.danger:hover{color:var(--danger);border-color:var(--danger);}
+.raw-view{white-space:pre-wrap;font-family:Consolas,Menlo,monospace;font-size:11.5px;color:var(--text);background:#171410;padding:14px;border-radius:5px;border:1px solid var(--border);max-height:60vh;overflow:auto;}
+.install-item{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border:1px solid var(--border);border-radius:5px;margin-bottom:7px;background:#1c1915;}
+.install-item.active{border-color:var(--amber);background:#241e14;}
+.install-item .iname{font-size:12.5px;font-weight:700;color:var(--text-bright);}
+.install-item .ifile{font-size:10.5px;color:var(--text-faint);font-family:Consolas,Menlo,monospace;margin-top:2px;}
+.toast{
+  position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#221e1a;border:1px solid var(--border);
+  color:var(--text-bright);padding:11px 18px;border-radius:6px;font-size:12.5px;z-index:120;box-shadow:0 10px 30px rgba(0,0,0,.5);
+  display:flex;align-items:center;gap:8px;opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+.toast.err{border-color:var(--danger);}
+.toast.ok::before{content:"✓";color:var(--good);font-weight:700;}
+.toast.err::before{content:"!";color:var(--danger);font-weight:700;}
+.footer-note{max-width:1280px;margin:36px auto 0;padding:0 24px 30px;font-size:11px;color:var(--text-faint);line-height:1.6;border-top:1px solid var(--border);padding-top:18px;}
+.footer-note a{color:var(--text-dim);}
+.small-badge{font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;background:rgba(122,150,209,.15);color:#7a96d1;border:1px solid rgba(122,150,209,.35);padding:1px 6px;border-radius:3px;margin-left:8px;}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <a class="app-brand" href="index.html" title="All IL-2 Korea tools">
+    <span class="plane">✈</span>
+    <div class="app-brand-text">
+      <b>STARTUP.CFG CONFIGURATOR</b>
+      <span>IL-2 Sturmovik — Graphics Settings</span>
+    </div>
+  </a>
+  <div class="tb-sep"></div>
+  <select class="tb-select" id="installSelect"><option value="">No file open</option></select>
+  <button class="tb-btn" id="btnAddInstall">＋ Open startup.cfg…</button>
+  <button class="tb-btn primary" id="btnSave" disabled>💾 Save</button>
+  <button class="tb-btn" id="btnSaveAs" disabled>Save As…</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="btnPresets" disabled>Presets ▾</button>
+  <button class="tb-btn" id="btnRaw" disabled>&lt;/&gt; Raw File</button>
+  <button class="tb-btn" id="btnRefresh" disabled title="Re-read this file from disk — use this if you changed it outside this app (in-game, or in another editor)">↻ Refresh</button>
+  <div class="tb-status" id="tbStatus"></div>
+</div>
+
+<div class="wrap">
+  <div class="page-title">
+    <span class="corner"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square" stroke-linejoin="miter"><path d="M7 2 L7 16 L19 16"/><path d="M13 11 L19 16 L13 21"/></svg></span>
+    <h1>Graphics Settings</h1>
+    <span class="sub" id="fileSub">No file loaded</span>
+  </div>
+
+  <div class="empty-state" id="emptyState">
+    <h2>Open a startup.cfg file to begin</h2>
+    <p>Browsers can't scan your PC for files on their own for security reasons — click <b>Open startup.cfg…</b> above and browse to your install folder the first time. After that, this file stays available as a quick‑switch tab for the rest of your session.</p>
+    <p style="margin-bottom:6px;">Common locations to check:</p>
+    <div class="path-hints" id="pathHints"></div>
+    <button class="tb-btn primary" id="btnEmptyOpen">＋ Open startup.cfg…</button>
+  </div>
+
+  <div id="mainContent" style="display:none;">
+    <div class="grid" id="mainGrid"></div>
+
+    <button class="ext-toggle" id="extToggle">
+      <span>Extended &amp; Hidden Settings <span class="small-badge">not in game menu</span></span>
+      <span class="arrow">▶</span>
+    </button>
+    <div class="ext-panel" id="extPanel">
+      <div class="ext-note"><b>Why these exist:</b> the in‑game menu only exposes a subset of what startup.cfg actually controls. Everything below is read directly from your file — including settings the developers consider internal (mostly VR headset tuning, multi‑GPU and memory options). They're all still ordinary numbers in a text file, but a few can produce a black screen or crash if set far outside their normal range, so change one thing at a time and keep a backup of your original file.</div>
+      <div class="ext-grid" id="extGrid"></div>
+      <div class="ext-grid" id="extGrid2" style="margin-top:8px;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="footer-note">
+  Works entirely in your browser — nothing is uploaded anywhere. Settings and presets exist only for this browser tab session; use <b>Presets → Export</b> to save them to a file you can re‑import next time. Field descriptions are compiled from the game's own settings menu, community documentation (IL‑2 Sturmovik forums) and the structure of the file itself; a few of the more obscure VR/internal fields are best‑effort interpretations — always keep a backup of your original startup.cfg before experimenting.
+</div>
+
+<!-- Drawer -->
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div>
+      <h3 id="drawerTitle">Setting</h3>
+      <div class="key" id="drawerKey">key</div>
+    </div>
+    <button class="drawer-close" id="drawerClose">×</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<!-- Add install modal (same guided flow as the first-run page, reused for adding more installs) -->
+<div class="modal-overlay" id="addInstallModal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head"><h3>Open startup.cfg</h3><button class="modal-close" data-close-modal="addInstallModal">×</button></div>
+    <div class="modal-body">
+      <p style="margin:0 0 12px;">Browsers can't scan your PC for files on their own for security reasons — click <b>Open startup.cfg…</b> below and browse to your install folder. If you've opened a file before, the picker will try to start in that same folder.</p>
+      <p style="margin:0 0 6px;">Common locations to check:</p>
+      <div class="path-hints" id="pathHintsModal"></div>
+      <button class="tb-btn primary" id="btnModalOpen" style="width:100%;justify-content:center;margin-top:4px;">＋ Open startup.cfg…</button>
+    </div>
+  </div>
+</div>
+
+<!-- Presets modal -->
+<div class="modal-overlay" id="presetModal">
+  <div class="modal">
+    <div class="modal-head"><h3>Presets</h3><button class="modal-close" data-close-modal="presetModal">×</button></div>
+    <div class="modal-body">
+      <label class="field-label">Save current graphics settings as a new preset</label>
+      <div style="display:flex;gap:8px;margin-bottom:6px;">
+        <input class="field-input" id="presetNameInput" placeholder="e.g. Combat / VR / Recording" style="margin-bottom:0;">
+        <button class="tb-btn primary" id="btnSavePreset" style="white-space:nowrap;">Save</button>
+      </div>
+      <p style="font-size:11px;color:var(--text-faint);margin:0 0 18px;">Presets store every graphics field's value, so you can jump between setups (e.g. sharp screenshots vs. max‑FPS multiplayer) in one click.</p>
+      <div id="presetList"></div>
+      <div id="presetEmpty" style="font-size:12px;color:var(--text-faint);text-align:center;padding:14px 0;">No presets saved yet this session.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="tb-btn" id="btnImportPresets">Import from file…</button>
+      <button class="tb-btn" id="btnExportPresets">Export to file…</button>
+      <input type="file" id="importPresetsInput" accept="application/json" style="display:none;">
+    </div>
+  </div>
+</div>
+
+<!-- Raw view modal -->
+<div class="modal-overlay" id="rawModal">
+  <div class="modal" style="max-width:720px;">
+    <div class="modal-head"><h3>Raw startup.cfg</h3><button class="modal-close" data-close-modal="rawModal">×</button></div>
+    <div class="modal-body"><div class="raw-view" id="rawViewText"></div></div>
+    <div class="modal-foot"><span style="font-size:11px;color:var(--text-faint);margin-right:auto;align-self:center;">Live preview of exactly what will be written on Save. Everything outside [KEY = graphics] is passed through untouched.</span></div>
+  </div>
+</div>
+
+<!-- Add install label modal -->
+<div class="modal-overlay" id="labelModal">
+  <div class="modal">
+    <div class="modal-head"><h3>Name this install</h3><button class="modal-close" data-close-modal="labelModal">×</button></div>
+    <div class="modal-body">
+      <label class="field-label">Label (so you can tell your installs apart)</label>
+      <input class="field-input" id="labelInput" placeholder="e.g. C: Drive Install / Steam D: Drive">
+      <p style="font-size:11px;color:var(--text-faint);">File: <span id="labelFileName" style="color:var(--text);"></span></p>
+    </div>
+    <div class="modal-foot"><button class="tb-btn primary" id="btnConfirmLabel">Add</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================================
+   IL-2 STARTUP.CFG GRAPHICS CONFIGURATOR
+   Single-file, offline-capable. No localStorage/sessionStorage/IndexedDB is
+   used anywhere in this app by design — all state (open files, edits,
+   presets) lives in memory for the current browser tab/session only.
+   Use "Save"/"Save As" to write the real file, and Presets → Export/Import
+   to carry presets between sessions.
+   ========================================================================= */
+
+/* ---------------------------- Utilities -------------------------------- */
+const $ = (sel, root=document) => root.querySelector(sel);
+const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+const el = (tag, cls, html) => { const e = document.createElement(tag); if(cls) e.className = cls; if(html!==undefined) e.innerHTML = html; return e; };
+
+function toast(msg, isErr){
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.toggle('err', !!isErr);
+  t.classList.toggle('ok', !isErr);
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>t.classList.remove('show'), 3200);
+}
+
+/* ---------------------------- CFG parsing -------------------------------
+   The file is a series of blocks:
+     [KEY = name]
+        key = value
+        key = "quoted value"
+     [END]
+   We only ever rewrite VALUE TOKENS on lines inside [KEY = graphics],
+   leaving every other byte of the file — including formatting, comments,
+   other sections, and blank lines — completely untouched.
+--------------------------------------------------------------------------*/
+function parseCfgText(text){
+  const lines = text.split(/\r\n|\n/);
+  const eol = text.includes('\r\n') ? '\r\n' : '\n';
+  let graphicsStart = -1, graphicsEnd = -1;
+  for(let i=0;i<lines.length;i++){
+    if(/^\s*\[\s*KEY\s*=\s*graphics\s*\]/i.test(lines[i])){ graphicsStart = i; }
+    else if(graphicsStart!==-1 && graphicsEnd===-1 && /^\s*\[END\]/i.test(lines[i])){ graphicsEnd = i; break; }
+  }
+  const fieldIndex = {}; // key -> { line, prefix, key, sep, rawValue, quoted }
+  const order = [];
+  if(graphicsStart!==-1 && graphicsEnd!==-1){
+    for(let i=graphicsStart+1;i<graphicsEnd;i++){
+      const m = lines[i].match(/^(\s*)([A-Za-z0-9_]+)(\s*=\s*)(.*)$/);
+      if(!m) continue;
+      const [, prefix, key, sep, rest] = m;
+      let rawValue = rest.replace(/\s+$/,'');
+      const quoted = /^".*"$/.test(rawValue);
+      fieldIndex[key] = { line:i, prefix, key, sep, rawValue, quoted };
+      order.push(key);
+    }
+  }
+  return { lines, eol, graphicsStart, graphicsEnd, fieldIndex, order, hasGraphics: graphicsStart!==-1 };
+}
+
+function formatValueForKey(key, value){
+  const t = FIELD_TYPES[key] || 'int';
+  if(t==='float5') return Number(value).toFixed(5);
+  if(t==='str') return `"${value}"`;
+  return String(Math.round(Number(value)));
+}
+
+function getFieldValue(state, key){
+  const f = state.fieldIndex[key];
+  if(!f) return undefined;
+  const t = FIELD_TYPES[key] || 'int';
+  if(f.quoted) return f.rawValue.slice(1,-1);
+  if(t==='float5') return parseFloat(f.rawValue);
+  return parseInt(f.rawValue,10);
+}
+
+function setFieldValue(state, key, value){
+  const f = state.fieldIndex[key];
+  if(!f) return false;
+  f.rawValue = formatValueForKey(key, value);
+  f.quoted = FIELD_TYPES[key]==='str';
+  state.lines[f.line] = `${f.prefix}${f.key}${f.sep}${f.rawValue}`;
+  state.dirty = true;
+  return true;
+}
+
+function serialize(state){ return state.lines.join(state.eol); }
+
+/* ------------------------- Field type table -----------------------------
+   Which of the 5-decimal float fields exist (everything else in the
+   graphics block is a plain integer in every known build of the file). */
+const FIELD_TYPES = {
+  draw_distance:'float5', gamma:'float5', grass_distance:'float5', or_ca:'float5', or_hud_rad:'float5',
+  or_hud_size:'float5', or_ipd:'float5', or_rescale:'float5', or_sipdc:'float5',
+  rescale_target:'float5', stereo_dof:'float5'
+};
+
+/* ============================ SCHEMA ====================================
+   Every key we know about from the [KEY = graphics] block. `group` places
+   it in the recreated in-game menu; anything with group:'ext:<bucket>'
+   lands in the Extended panel instead. Keys found in a real file that
+   AREN'T listed here still get auto-added (see AUTO-FALLBACK below) so the
+   app never hides a setting.
+========================================================================= */
+const LEARN_CONFIG_EDITOR = 'https://forum.il2sturmovik.com/topic/66790-il-2-config-editor-made-a-little-program-for-changing-graphics-settings-outside-of-the-game/';
+const LEARN_BEST_SETTINGS = 'https://forum.il2sturmovik.com/topic/72457-best-graphics-settings/';
+// The in-game menu shows this exact caution whenever the CURRENTLY SELECTED
+// tier is itself the flagged/high-cost one — not merely whenever a flagged
+// tier exists among the options — so we derive it automatically per-instance
+// instead of repeating it on every field. See isCurrentValueFlagged() below.
+const VRAM_WARN = 'Selecting high values for this option will significantly increase the load on VRAM.';
+
+const SCHEMA = {
+
+  // ---------------- GENERAL ----------------
+  preset:{ label:'General Graphics Quality', group:'General', type:'select',
+    options:[[0,'Low'],[1,'Balanced'],[2,'High'],[3,'Ultra',true],[4,'VR Optimized']],
+    warnNote:`Selecting high values for this option will significantly increase the load on VRAM.`,
+    tip:`Overall graphics quality level. This option affects numerous graphics system parameters that lack separate settings. This option effectively serves as a preset for a variety of specific settings — it's the primary tool for adjusting quality and performance; all other options are additional settings players are accustomed to customizing individually.` },
+
+  '__resolution':{ label:'Screen Resolution', group:'General', type:'resolution', keys:['full_width','full_height','win_width','win_height'],
+    tip:`For best image quality, the selected resolution should match your monitor or TV's resolution.<br><br>In fullscreen mode, you can lower the game's resolution, which reduces visual quality but significantly improves performance and reduces video memory usage.<br><br>Writes the same value to <span class="drawer-cfg">full_width</span>/<span class="drawer-cfg">full_height</span> (fullscreen) and <span class="drawer-cfg">win_width</span>/<span class="drawer-cfg">win_height</span> (windowed) at once so switching Full Screen on or off doesn't leave you at a stale resolution — open <b>Extended Settings</b> if you specifically want a different fullscreen vs. windowed resolution.` },
+
+  fullscreen:{ label:'Full Screen', group:'General', type:'bool',
+    tip:`Game performance may be higher in full‑screen mode, but switching to other programs is slower. If you frequently switch to other applications while playing, it is recommended to use the game's windowed mode.` },
+
+  upscaler:{ label:'Upscaling', group:'General', type:'select',
+    options:[[0,'Disabled'],[1,'FSR Quality'],[2,'FSR Balanced'],[3,'FSR Performance'],[4,'FSR Performance +']],
+    tip:`Upscaling boosts frame rate by rendering at a lower resolution and then intelligently reconstructing the image to a higher target resolution. Select this option to improve the game's performance at 1080p and higher resolutions.<br><br>FSR is a universal technology from AMD that is compatible with all graphics cards. DLSS is a technology designed for NVIDIA RTX graphics cards and, where available, is chosen automatically for the equivalent tier.<br><br><b>Quality</b> — the best image quality setting.<br><b>Balanced</b> — recommended medium setting.<br><b>Performance</b> — puts a priority on frame rate over resolution.<br><b>Performance +</b> — fastest possible frame rate at the cost of visual fidelity.<br><br>The exact reconstruction backend used is chosen by <span class="drawer-cfg">upscaler_driver</span> in Extended Settings.` },
+
+  or_enable:{ label:'Enable VR HMD', group:'General', type:'select',
+    options:[[0,'Disabled'],[1,'OpenVR',true],[2,'OpenXR',true]],
+    restartNote:`The changes will take effect after restarting the game.`,
+    tip:`Selection of VR headset API.<br><br><b>OpenVR</b> is a time‑tested solution from Valve (Steam), compatible with all VR devices and providing stable performance.<br><br><b>OpenXR</b> is a more recent solution from the Khronos Group, built on open‑source principles. It provides a noticeable performance boost on many configurations. However, this technology has a limited list of compatible VR headsets in DirectX 12.<br><br><span style="color:var(--danger);font-weight:700;">WARNING:</span> using the additional third‑party OpenXR Toolkit may cause instability in DirectX 12 — and consequently crash the game itself. It's recommended to disable the OpenXR Toolkit when using the OpenXR API.` },
+
+  // ---------------- VISUAL EFFECTS ----------------
+  land_detail:{ label:'Distant Landscape Detail', group:'VisualEffects', type:'select',
+    options:[[0,'Normal'],[1,'x2'],[2,'x3',true],[3,'x4',true]],
+    tip:`Increases the detail of ground textures at long distances, but requires significantly more video memory.` },
+
+  draw_distance:{ label:'Horizon Draw Distance', group:'VisualEffects', type:'select',
+    options:[[0.0,'40 km'],[0.274,'70 km'],[0.545,'100 km'],[0.818,'130 km'],[1.0,'150 km']],
+    tip:`The draw distance of the landscape and clouds. Longer draw distance matters a lot for spotting aircraft at range and for scenery immersion at altitude, but is one of the heavier VRAM/CPU‑cost sliders in the game.`,
+    learnMore:LEARN_CONFIG_EDITOR },
+
+  far_blocks:{ label:'Distant Buildings', group:'VisualEffects', type:'bool',
+    tip:`Map's scenery display range increased to 30 km.` },
+
+  fp_body_visible:{ label:'Pilot Body Visibility', group:'VisualEffects', type:'bool',
+    tip:`Enables or disables the visibility of the pilot's body in first‑person view.` },
+
+  canopy_ref:{ label:'Canopy Reflections', group:'VisualEffects', type:'select',
+    options:[[0,'Off'],[1,'Normal'],[2,'High']],
+    tip:`The quality of reflections in the canopy and instrument glass.` },
+
+  shadows_quality:{ label:'Shadows Quality', group:'VisualEffects', type:'select',
+    options:[[0,'Off'],[1,'Low'],[2,'Medium'],[3,'High',true],[4,'Ultra',true]],
+    tip:`Adjust shadows detail.` },
+
+  max_clouds_quality:{ label:'Clouds Quality', group:'VisualEffects', type:'select',
+    options:[[0,'Low'],[1,'Medium'],[2,'High'],[3,'Extreme']],
+    tip:`Clouds detail level.` },
+
+  grass_distance:{ label:'Grass Quality', group:'VisualEffects', type:'select',
+    options:[[0,'Off'],[100,'Normal'],[200,'Distant'],[300,'Ultra',true]],
+    tip:`Grass rendering distance.`,
+    learnMore:LEARN_CONFIG_EDITOR },
+
+  mirrors:{ label:'Mirrors', group:'VisualEffects', type:'select',
+    options:[[0,'Off'],[1,'Simple'],[2,'Medium'],[3,'Complex']],
+    tip:`Mirror image detail.` },
+
+  // ---------------- ADVANCED ----------------
+  modeaa:{ label:'AntiAliasing', group:'Advanced', type:'select',
+    options:[[0,'Off'],[1,'FXAA'],[2,'FSR AA'],[3,'MSAA',true]],
+    tip:`<b>FXAA</b> - Fast Approximate Anti‑Aliasing, the simplest yet fastest technology that gives medium quality results.<br><br><b>FSR AA</b> - FidelityFX Super Resolution Anti‑Aliasing, an anti‑aliasing tech that is a sub‑mode of FSR upscaling technology.<br><br><b>DLAA</b> - Deep Learning Anti‑Aliasing, an anti‑aliasing tech that is a sub‑mode of DLSS upscaling technology. Only available on Nvidia RTX graphics cards (not shown as a selectable option here since this tool can't detect your GPU).<br><br><b>MSAA</b> - Multi‑Sample Anti‑Aliasing, a technology that delivers the best visual results at the biggest performance cost and video memory consumption.` },
+
+  multisampling:{ label:'Antialiasing Rate', group:'Advanced', type:'select', dependsOn:['modeaa',3],
+    options:[[1,'2'],[2,'4',true],[3,'8',true]],
+    tip:`Antialiasing rate for 1080p and lower‑resolution screens. The higher the sampling rate, the less blurry the image will be at the expense of performance. Please note that on high enough resolution displays (1440p, especially 2160p) you might get a better result with antialiasing completely disabled. Only relevant when AntiAliasing above is set to MSAA (this row is greyed out otherwise, exactly like in‑game).` },
+
+  rescale_target:{ label:'Dynamic Resolution Factor', group:'Advanced', type:'select',
+    options:[[1.0,'Disabled'],[0.9,'0.9'],[0.8,'0.8'],[0.7,'0.7'],[0.6,'0.6'],[0.5,'0.5']],
+    tip:`Dynamic Resolution Factor (DRF) allows the game to automatically reduce image quality (resolution) to achieve a target number of Frames Per Second (FPS). The number chosen is the minimum scale factor the dynamic scaler is allowed to drop internal render resolution to before frame rate is prioritized over resolution; Disabled always renders at full output resolution. Works together with Target FPS below — see its tooltip for how the two interact.` },
+
+  fps_limit:{ label:'Target FPS', group:'Advanced', type:'select',
+    options:[[0,'Off'],[30,'30'],[50,'50'],[60,'60'],[80,'80'],[100,'100'],[120,'120'],[144,'144'],[240,'240']],
+    tip:`Limiting / Defining the target FPS (Frames Per Second) level. This option's functionality depends on the Dynamic Resolution Factor (DRF) setting.<br><br>When DRF is disabled, this option directly limits FPS, helping to reduce the load on the graphics card and its heating. This can be useful for improving the stability of thermally stressed configurations. Sometimes it makes sense to set it equal to the monitor's refresh rate. The limit is only meaningful if it is lower than the FPS the graphics card provides when this option is disabled.<br><br>When DRF is enabled, this option sets the target FPS. If the graphics card cannot provide this level at the specified image resolution, the system reduces the image resolution. If, conversely, the graphics card can provide a higher FPS, the system will limit it to the specified level.` },
+
+  vsync:{ label:'VSync', group:'Advanced', type:'bool',
+    tip:`Vertical synchronization synchronizes the game's frame rate (FPS) with your screen's refresh rate. This eliminates the screen tearing effect during rapid image changes. Syncing only works when the graphics card's performance allows for a frame rate (FPS) consistently higher than the monitor's refresh rate.` },
+
+  post_sharpen:{ label:'Sharpen', group:'Advanced', type:'bool',
+    tip:`Sharpening post‑effect. May cause aliasing, posterization, and pixelation in certain situations, but many players still love it.` },
+
+  ssao_enable:{ label:'SSAO', group:'Advanced', type:'bool',
+    tip:`Screen Space Ambient Occlusion (SSAO) adds realism and depth to an image by creating additional shading in areas where ambient light is limited by nearby obstacles.` },
+
+  indirect_lighting:{ label:'Indirect Lighting', group:'Advanced', type:'bool', warnOn:1,
+    tip:`A technology that enables objects to be illuminated not only by direct light sources but also by light from these sources reflected from nearby surfaces. It significantly improves the realism of lighting near the ground, in the cockpit, and in other complex scenes. Enabling this option significantly impacts graphics performance.` },
+
+  land_tex_lods:{ label:'Terrain Roughness', group:'Advanced', type:'select',
+    options:[[0,'Off'],[1,'Low'],[2,'Medium'],[3,'High']],
+    tip:`The terrain mesh includes an additional detail system that significantly enhances the realism of the ground surface near the camera. The objects physically interact with this more detailed surface, but full alignment between physical contact and surface rendering is only achieved when this option is set to its maximum value.` },
+
+  land_anisotropy:{ label:'Landscape Filter', group:'Advanced', type:'select',
+    options:[[0,'Off'],[4,'Sharp'],[1,'Blurred']],
+    tip:`A special filter that allows you to either increase the contrast of ground textures or, conversely, smooth them out. This option allows you to customize the landscape look to your personal preferences.`,
+    learnMore:LEARN_BEST_SETTINGS },
+
+  hdr_enable:{ label:'Lighting HDR', group:'Advanced', type:'bool',
+    tip:`High Dynamic Range (HDR) lighting increases contrast and color rendition, revealing more detail in both the brightest and darkest areas and making images more realistic.<br><br>This technology improves image quality, contrast, and natural appearance through a mechanism similar to human visual accommodation. Any monitor has a limited range of brightness values, and the difference between the darkest and brightest pixels is not as great as the difference between the brightest and darkest areas in nature. HDR ensures the most efficient use of this range, prioritizing areas of the image with dominant brightness.` },
+
+  gamma:{ label:'Gamma Correction', group:'Advanced', type:'slider', min:0.5, max:2.0, step:0.01, unit:'',
+    tip:`Overall brightness/contrast curve applied to the final image, independent of your monitor's own brightness setting. 1.00 is the game's authored default; raising it lifts shadow detail (useful on a dim monitor or washed‑out cockpit interiors) at the cost of a flatter, less contrasty look; lowering it deepens shadows and contrast.` },
+
+  max_cache_res:{ label:'Use 4K Textures', group:'Advanced', type:'select',
+    options:[[0,'Disabled'],[2,'Enabled',true]],
+    tip:`When this option is enabled, textures in the game will be displayed at the highest possible quality. Disabling this option significantly reduces video memory consumption, but 4K textures will be displayed at 2K resolution, while other textures will remain unchanged.` },
+
+  low_memory_mode:{ label:'Cities Optimization', group:'Advanced', type:'select',
+    options:[[0,'Favor FPS'],[1,'Memory Saver']],
+    tip:`The game engine has two building rendering optimization modes.<br><br>The performance optimization mode — "Favor FPS" — demands more video memory, but improves graphics performance over cities.<br><br>The video memory optimization mode — "Memory Saver" — reduces the video memory consumption but places a greater load on performance.<br><br>If your graphics card has a large amount of onboard video memory (VRAM), "Favor FPS" is the recommended setting. If available VRAM is limited, then "Memory Saver" is the recommended mode.` },
+
+  or_rescale:{ label:'VR Resolution Factor', group:'Advanced', type:'select', dependsOn:['or_enable',[1,2]],
+    options:[[1.0,'100% (Default)'],[0.85,'85%'],[0.75,'75%'],[0.6,'60%'],[0.5,'50%'],[0.4,'40%'],[0.25,'25%']],
+    restartNote:'The changes will take effect after restarting the game.',
+    tip:`Use this option to reduce image resolution in VR mode when you need to improve performance (FPS) without reducing the quality of other graphics settings.<br><br>Please note: some VR devices have up to 8000 pixels resolution, while most modern graphics cards cannot provide high performance at this resolution. In this case, we recommend using this option. Greyed out here when VR is disabled, matching the in‑game menu.` },
+};
+
+/* ---------------- EXTENDED (not shown in game menu) ---------------- */
+const EXT_SCHEMA = {
+  adapter:{ label:'GPU Adapter Index', group:'ext:display', type:'number', min:0, max:8,
+    tip:`Chooses which detected graphics adapter (GPU) the game renders on, by index — 0 is normally the first/primary GPU reported by Windows. On laptops with both an integrated and discrete GPU, or desktops with multiple graphics cards, forcing a specific index here can be used to make sure the game runs on the discrete/faster GPU if Windows' own graphics‑preference settings aren't being respected. Values beyond the number of GPUs actually installed will fail to launch — leave at 0 unless you have a specific multi‑GPU reason to change it.` },
+  mgpu_compatible:{ label:'Multi‑GPU Compatibility Mode', group:'ext:display', type:'bool',
+    tip:`A compatibility fallback rendering path intended for systems with more than one GPU active (e.g. laptop switchable/hybrid graphics setups, or multi‑adapter desktops), which can otherwise trigger rendering glitches on this engine. Only enable if you're actually on a multi‑GPU system and seeing visual corruption — it can cost some performance on a normal single‑GPU system for no benefit.` },
+  desktop_center:{ label:'Center Window on Desktop', group:'ext:display', type:'bool',
+    tip:`When running in windowed (non‑fullscreen) mode, centers the game window on your primary monitor on launch instead of leaving it at whatever position it last used (or the OS default, often the top‑left corner).` },
+  upscaler_driver:{ label:'Upscaling Driver', group:'ext:display', type:'select',
+    options:[[0,'FSR (default)'],[1,'Alternate driver 1'],[2,'Alternate driver 2']],
+    tip:`Selects which underlying upscaling implementation is used when Upscaling (General tab) is Enabled. AMD's FidelityFX Super Resolution is the documented default on this engine; other numeric values are reserved for alternate upscaling backends the developers have added for testing and may not be available/stable in every build.` },
+  win_width:{ label:'Windowed Width', group:'ext:display', type:'number', min:640, max:7680, unit:'px',
+    tip:`Window width in pixels used specifically when Full Screen is off. Normally kept identical to the fullscreen resolution by the Screen Resolution control above — set this independently if you want, e.g., a smaller windowed play area while multitasking.` },
+  win_height:{ label:'Windowed Height', group:'ext:display', type:'number', min:480, max:4320, unit:'px',
+    tip:`Window height in pixels used specifically when Full Screen is off. See Windowed Width.` },
+  full_width:{ label:'Fullscreen Width', group:'ext:display', type:'number', min:640, max:7680, unit:'px',
+    tip:`Render width in pixels used specifically when Full Screen is on. Should normally match one of your monitor's supported exclusive‑fullscreen resolutions.` },
+  full_height:{ label:'Fullscreen Height', group:'ext:display', type:'number', min:480, max:4320, unit:'px',
+    tip:`Render height in pixels used specifically when Full Screen is on. See Fullscreen Width.` },
+
+  bloom_enable:{ label:'Bloom', group:'ext:visual', type:'bool',
+    tip:`Post‑process glow/bleed added around very bright light sources — direct sun, explosions, muzzle flashes, flares. Automatically forced on whenever Lighting HDR (Advanced tab) is enabled, since the engine ties the two together; you can still enable Bloom independently with HDR off for a softer, less "HDR‑correct" glow look.` },
+  detail_rt_res:{ label:'Detail Render Target Resolution', group:'ext:perf', type:'select',
+    options:[[512,'512 px'],[1024,'1024 px'],[2048,'2048 px'],[4096,'4096 px']],
+    tip:`Resolution of an internal render‑target texture used for certain close‑up detail effects (this typically feeds things like canopy reflections and some cockpit/gauge rendering passes). Higher values sharpen those specific effects at a fairly small but real extra GPU/VRAM cost — usually not worth raising unless you've specifically noticed a blurry reflection or gauge texture.` },
+  lod_degrade:{ label:'LOD Degrade', group:'ext:perf', type:'bool',
+    tip:`When enabled, allows the engine to more aggressively drop objects to lower level‑of‑detail meshes under load (e.g. many aircraft/objects on screen at once), trading visual fidelity for steadier frame times during the heaviest moments — big furballs, mass take‑offs, dense city flyovers. A reasonable safety valve to enable on lower‑end hardware; leave off if you always want maximum consistent detail and have the GPU headroom to spare.` },
+  gammaquad:{ label:'Gamma Curve Exponent', group:'ext:perf', type:'number', min:-1, max:1, step:1,
+    tip:`An experimental secondary correction applied on top of the main Gamma Correction slider, adjusting the curvature (quadratic component) of the brightness response rather than a flat offset — in practice this shifts how midtones vs. highlights respond differently to the gamma slider. 0 (the default) leaves the curve linear/untouched. Stored as a whole number in every file we've seen, so this control steps by whole numbers; this is an advanced/experimental field with no in‑game control, so change it one step at a time and compare before/after screenshots.` },
+  fps_counter:{ label:'FPS Counter Overlay', group:'ext:perf', type:'bool',
+    tip:`Shows a real‑time frame‑rate counter overlay on screen — handy while you're using this tool to tune settings, so you can see the actual cost of each change without needing a separate overlay tool like RivaTuner/MSI Afterburner.` },
+  '3dhud':{ label:'Stereoscopic 3D HUD', group:'ext:perf', type:'bool',
+    tip:`Renders HUD elements (compass, target icons, markers) with real stereoscopic depth positioned out in the 3D world rather than as a flat 2D layer pasted over the screen. Mainly relevant in VR, where a flat 2D HUD can look uncomfortably "stuck to your face"; flat‑screen players generally leave this off.` },
+  msaa:{ label:'MSAA Enable Flag', group:'ext:display', type:'bool',
+    tip:`A secondary MSAA on/off flag that sits alongside AntiAliasing (<span class="drawer-cfg">modeaa</span>) and Antialiasing Rate (<span class="drawer-cfg">multisampling</span>) on the Advanced tab. On current builds this appears to simply track whether AntiAliasing is set to MSAA rather than needing to be set independently — treat the AntiAliasing dropdown as the one control that matters, and leave this in sync with it unless you're specifically troubleshooting an antialiasing problem.` },
+
+  or_width:{ label:'VR Render Width (per eye)', group:'ext:vr', type:'number', min:512, max:8192, unit:'px',
+    tip:`Internal render‑target width per eye, in pixels, before lens distortion correction. Normally derived automatically from your headset plus the VR Resolution Factor slider — the raw value is exposed here for troubleshooting or manual VR tuning.` },
+  or_height:{ label:'VR Render Height (per eye)', group:'ext:vr', type:'number', min:512, max:8192, unit:'px',
+    tip:`Internal render‑target height per eye, in pixels, before lens distortion correction. See VR Render Width.` },
+  or_ipd:{ label:'Interpupillary Distance Offset', group:'ext:vr', type:'number', min:-0.1, max:0.1, step:0.00001,
+    tip:`A fine‑tuning offset (in metres) applied on top of the IPD your headset/runtime already reports, for correcting stereo depth if the default doesn't quite match your own eye spacing. Stored to 5 decimal places, so you can dial this in very precisely — this is a nudge, not a full IPD override; large values will make stereo depth feel noticeably wrong or uncomfortable. 0 = no adjustment.` },
+  or_hud_rad:{ label:'VR HUD Radius', group:'ext:vr', type:'number', min:0.1, max:5, step:0.01,
+    tip:`Distance (in arbitrary render units, roughly metres) from the camera at which the VR HUD is projected. Placing it too close can strain eye convergence since it sits closer than most of the outside world you're looking past it at; placing it far away can make it hard to read fine text.` },
+  or_hud_size:{ label:'VR HUD Size', group:'ext:vr', type:'number', min:0.1, max:3, step:0.01,
+    tip:`Overall scale of HUD elements when rendered in VR. Increase if compass/icons feel too small to read at your HUD Radius setting, decrease if they feel intrusive.` },
+  or_render_eye:{ label:'VR Render Eye (spectator view)', group:'ext:vr', type:'select',
+    options:[[0,'Left'],[1,'Right'],[2,'Both / Mirrored']],
+    tip:`Which eye's view (or both) is mirrored to the flat 2D desktop window while you're playing in a headset — purely for what people watching your monitor/stream see, it doesn't affect what you see in the headset.` },
+  or_rpm_max:{ label:'VR Prop Blur Reference RPM', group:'ext:vr', type:'number', min:0, max:5000, unit:'rpm',
+    tip:`Reference engine RPM used to calibrate the propeller motion‑blur effect specifically for VR rendering. Works together with Prop Blur Max RPM below; these exist as a separate VR‑specific pair because prop‑disc blur that looks right on a flat monitor can look distractingly wrong (or motion‑sickness‑inducing) at VR frame rates and field of view.` },
+  or_sipdc:{ label:'VR Stereo IPD Correction', group:'ext:vr', type:'number', min:-0.02, max:0.02, step:0.001,
+    tip:`A secondary stereo correction factor distinct from the main IPD offset above — thought to compensate for a systematic difference between the reported headset IPD and the IPD actually used for the stereo camera separation in the renderer. Leave at 0 unless you're specifically chasing a "world feels miniaturized/oversized" (wrong scale) sensation in VR that isn't fixed by the main IPD offset.` },
+  or_ca:{ label:'Chromatic Aberration Correction', group:'ext:vr', type:'number', min:-1, max:1, step:0.01,
+    tip:`Adjusts the lens chromatic‑aberration correction applied to counteract the colour fringing your headset's optics naturally introduce toward the edge of the lens. 0 applies the runtime/headset default correction; nudging this can help if you notice red/blue fringing at the periphery of your view that the default correction doesn't fully remove for your specific headset.` },
+  stereo_dof:{ label:'VR Stereo Depth of Field', group:'ext:vr', type:'number', min:0, max:20, step:0.5,
+    tip:`Strength of a depth‑of‑field–style effect applied to the stereo VR image, generally used to help sell close‑up cockpit geometry (gauges, frame, gunsight) as being at a different focal depth than the outside world. Higher values exaggerate the effect; some VR users find any DOF in a headset uncomfortable/nauseating and set this to 0.` },
+  prop_blur_max_rpm_for_vr:{ label:'Prop Blur Max RPM (VR)', group:'ext:vr', type:'number', min:0, max:5000, unit:'rpm',
+    tip:`The RPM at which the propeller motion‑blur/disc effect reaches its maximum blur strength, specifically for VR rendering (a separate cap from the flat‑screen version isn't exposed in this file — this is the VR‑specific one). Tune down if a fully blurred prop disc in VR feels visually distracting or motion‑sickness‑inducing at high RPM.` },
+};
+
+const AUTO_FALLBACK_NOTE = `This key was found in your startup.cfg but isn't in this tool's known‑settings list (likely a newer/older game build than this tool was built against). Its raw value is editable below — refer to the community forums linked in the footer, or the file's own key name, for guidance before changing it.`;
+
+/* ---------------- Group display metadata ---------------- */
+const GROUPS = [
+  { id:'General', title:'General', col:1 },
+  { id:'VisualEffects', title:'Visual Effects', col:1 },
+  { id:'Advanced', title:'Advanced Settings', col:2 },
+];
+const EXT_GROUPS = [
+  { id:'ext:display', title:'Display, Window &amp; GPU', col:1 },
+  { id:'ext:vr', title:'Virtual Reality (HMD) Internals', col:1 },
+  { id:'ext:visual', title:'Extra Visual Tweaks', col:2 },
+  { id:'ext:perf', title:'Performance, Memory &amp; Debug', col:2 },
+  { id:'ext:other', title:'Unrecognized Settings In Your File', col:2 },
+];
+
+const COMMON_PATHS = [
+  'C:\\IL2Series\\game\\data\\startup.cfg',
+  'D:\\IL2Series\\game\\data\\startup.cfg',
+  'C:\\Steam\\steamapps\\common\\IL2Series\\data\\startup.cfg',
+  'D:\\Steam\\steamapps\\common\\IL2Series\\data\\startup.cfg',
+];
+
+/* ============================ APP STATE ================================= */
+const App = {
+  installs: [],       // { id, label, mode, handle, fileName, state:{lines,eol,fieldIndex,...}, dirty }
+  activeId: null,
+  presets: [],         // { id, name, values:{key:value}, createdAt }
+  fsApiSupported: (typeof window.showOpenFilePicker === 'function'),
+  lastHandle: null,    // most recently opened/refreshed FileSystemFileHandle — used to default the picker's start folder
+};
+
+function activeInstall(){ return App.installs.find(i=>i.id===App.activeId); }
+
+function uid(){ return 'x'+Math.random().toString(36).slice(2,10); }
+
+/* ------------------------- Building full field list ---------------------- */
+function buildFieldList(install){
+  // returns { General:[keys], VisualEffects:[keys], Advanced:[keys], 'ext:display':[...], ... }
+  const buckets = {}; GROUPS.forEach(g=>buckets[g.id]=[]); EXT_GROUPS.forEach(g=>buckets[g.id]=[]);
+  const known = new Set();
+  Object.keys(SCHEMA).forEach(k=>known.add(k));
+  Object.keys(EXT_SCHEMA).forEach(k=>known.add(k));
+  // the resolution composite field covers these four raw keys directly
+  ['full_width','full_height','win_width','win_height'].forEach(k=>known.add(k));
+
+  Object.entries(SCHEMA).forEach(([key,def])=>{
+    if(key.startsWith('__')){ buckets[def.group].push(key); return; }
+    if(install.state.fieldIndex[key]) buckets[def.group].push(key);
+  });
+  Object.entries(EXT_SCHEMA).forEach(([key,def])=>{
+    if(install.state.fieldIndex[key]) buckets[def.group].push(key);
+  });
+  // auto-fallback for anything in the real file we don't know about
+  install.state.order.forEach(key=>{
+    if(known.has(key)) return;
+    buckets['ext:other'].push(key);
+  });
+  return buckets;
+}
+
+/* ------------------------------- Renderers -------------------------------- */
+function renderApp(){
+  const has = App.installs.length>0;
+  $('#emptyState').style.display = has ? 'none' : '';
+  $('#mainContent').style.display = has ? '' : 'none';
+  renderToolbar();
+  if(has) renderSettings();
+}
+
+function renderToolbar(){
+  const sel = $('#installSelect');
+  sel.innerHTML = '';
+  if(App.installs.length===0){
+    sel.appendChild(el('option','', 'No file open'));
+  }
+  App.installs.forEach(inst=>{
+    const o = el('option','', (inst.dirty?'● ':'') + inst.label);
+    o.value = inst.id;
+    sel.appendChild(o);
+  });
+  sel.value = App.activeId || '';
+  const has = !!activeInstall();
+  $('#btnSave').disabled = !has;
+  $('#btnSaveAs').disabled = !has;
+  $('#btnPresets').disabled = !has;
+  $('#btnRaw').disabled = !has;
+  $('#btnRefresh').disabled = !has;
+
+  const inst = activeInstall();
+  const status = $('#tbStatus');
+  if(inst){
+    status.innerHTML = `<b>${inst.mode==='fsapi' ? 'Linked to file — Save writes directly' : 'Download mode — Save prompts a download'}</b>${inst.dirty ? '<span class="dirty-dot" title="Unsaved changes"></span> unsaved changes' : ''}`;
+    $('#fileSub').textContent = `${inst.label} — ${inst.fileName}`;
+  } else {
+    status.textContent = App.fsApiSupported ? 'Chrome/Edge detected — files can be saved directly back to disk. (If Open fails with a security error, you\'re likely viewing this inside an embedded preview — open the file in a normal browser tab for direct save.)' : 'Save will download a new copy — move it over the original file (drag/drop or replace in File Explorer).';
+    $('#fileSub').textContent = 'No file loaded';
+  }
+}
+
+function fieldGetRaw(install, key){ return getFieldValue(install.state, key); }
+
+function renderSettings(){
+  const inst = activeInstall();
+  const buckets = buildFieldList(inst);
+
+  const grid = $('#mainGrid'); grid.innerHTML = '';
+  const col1 = el('div'), col2 = el('div');
+  grid.appendChild(col1); grid.appendChild(col2);
+  GROUPS.forEach(g=>{
+    const keys = buckets[g.id];
+    if(!keys || !keys.length) return;
+    const target = g.col===1 ? col1 : col2;
+    target.appendChild(renderGroup(g.title, keys, inst, SCHEMA));
+  });
+
+  const extGrid = $('#extGrid'); extGrid.innerHTML='';
+  const extGrid2 = $('#extGrid2'); extGrid2.innerHTML='';
+  const eCol1 = el('div'), eCol2 = el('div');
+  extGrid.appendChild(eCol1); extGrid.appendChild(eCol2);
+  EXT_GROUPS.forEach(g=>{
+    const keys = buckets[g.id];
+    if(!keys || !keys.length) return;
+    const target = g.col===1 ? eCol1 : eCol2;
+    const schemaSrc = g.id==='ext:other' ? null : EXT_SCHEMA;
+    target.appendChild(renderGroup(g.title, keys, inst, schemaSrc, g.id==='ext:other'));
+  });
+
+  renderToolbar();
+  if($('#rawModal').classList.contains('open')) updateRawView();
+}
+
+function renderGroup(title, keys, inst, schemaSrc, isFallback){
+  const wrap = el('div','group');
+  wrap.appendChild(el('h3','', title));
+  keys.forEach(key=>{
+    let def = schemaSrc ? schemaSrc[key] : null;
+    if(isFallback || !def){
+      def = { label:key, type:'auto', tip:AUTO_FALLBACK_NOTE };
+    }
+    wrap.appendChild(renderRow(key, def, inst));
+  });
+  return wrap;
+}
+
+function isRowEnabled(inst, def){
+  if(!def.dependsOn) return true;
+  const [depKey, expect] = def.dependsOn;
+  const v = fieldGetRaw(inst, depKey);
+  return Array.isArray(expect) ? expect.includes(v) : v===expect;
+}
+
+/* Is the row's CURRENTLY STORED value one flagged as demanding/risky?
+   Mirrors the in-game menu, which shows a warning icon next to the label
+   itself (not just inside the open dropdown) whenever the active setting
+   is one of the flagged ones. */
+function isCurrentValueFlagged(key, def, inst){
+  if(def.type==='select'){
+    const val = fieldGetRaw(inst, key);
+    const [current] = resolveCurrentOption(def, val);
+    return !!current[2];
+  }
+  if(def.type==='bool'){
+    return def.warnOn === fieldGetRaw(inst, key);
+  }
+  return false;
+}
+
+function renderRow(key, def, inst){
+  const row = el('div','row');
+  row.dataset.key = key;
+  const enabled = isRowEnabled(inst, def);
+  if(!enabled) row.classList.add('disabled');
+
+  const labelWrap = el('div','row-label');
+  labelWrap.appendChild(document.createTextNode(def.label));
+  if(isCurrentValueFlagged(key, def, inst)){
+    const warnIcon = el('span','row-warn','!');
+    warnIcon.title = 'This setting is currently on a demanding tier — expect a bigger VRAM/performance cost.';
+    labelWrap.appendChild(warnIcon);
+  }
+  const infoBtn = el('button','info-btn','i');
+  infoBtn.title = 'What does this do?';
+  infoBtn.addEventListener('click', (e)=>{ e.stopPropagation(); openDrawer(key, def, inst); });
+  labelWrap.appendChild(infoBtn);
+  row.appendChild(labelWrap);
+
+  const ctrl = el('div','row-control');
+  const control = buildControl(key, def, inst);
+  ctrl.appendChild(control);
+  row.appendChild(ctrl);
+
+  // Item 7: the whole row acts as the control's trigger, not just the
+  // value text itself — clicking anywhere on the line opens its dropdown
+  // (or focuses its input), matching how the in-game menu behaves.
+  row.addEventListener('click', (e)=>{
+    if(e.target.closest('.info-btn')) return;
+    if(e.target === control || control.contains(e.target)) return; // let the control's own handler run
+    e.stopPropagation(); // don't let this bubble to the document listener that closes open dropdowns
+    if(control.tagName==='BUTTON'){ control.click(); }
+    else {
+      const inner = control.querySelector('button, input');
+      if(inner){ inner.tagName==='INPUT' ? inner.focus() : inner.click(); }
+    }
+  });
+  return row;
+}
+
+function markDirtyAndRerender(inst){
+  inst.dirty = true;
+  renderSettings();
+}
+
+/* ---- control builders ---- */
+function buildControl(key, def, inst){
+  switch(def.type){
+    case 'bool': return buildBoolSelect(key, def, inst);
+    case 'select': return buildSelect(key, def, inst);
+    case 'resolution': return buildResolution(key, def, inst);
+    case 'stepper': return buildStepper(key, def, inst);
+    case 'slider': return buildSlider(key, def, inst);
+    case 'number': return buildNumber(key, def, inst);
+    case 'auto': return buildAuto(key, def, inst);
+    default: return buildAuto(key, def, inst);
+  }
+}
+
+/* Every on/off field in the real in-game menu is a two-item dropdown
+   ("Disabled"/"Enabled"), not a toggle switch — render it the same way
+   every other dropdown is rendered so it looks and behaves identically. */
+function buildBoolSelect(key, def, inst){
+  const options = [[0,'Disabled', def.warnOn===0], [1,'Enabled', def.warnOn===1]];
+  return buildSelect(key, Object.assign({}, def, {options}), inst);
+}
+
+function closeAllMenus(){ $$('.gsel-menu').forEach(m=>m.remove()); }
+document.addEventListener('click', (e)=>{
+  if(!e.target.closest('.gsel')) closeAllMenus();
+});
+
+/* Returns [optionTuple, isApproximate] — if the raw stored value doesn't
+   exactly match a known option (e.g. a newer/older game build uses a wider
+   range than this tool knows about), we still show the closest known label
+   instead of a bare, meaningless number. */
+function resolveCurrentOption(def, val){
+  const exact = def.options.find(o=>o[0]===val);
+  if(exact) return [exact, false];
+  const nearest = def.options.reduce((best,o)=> (best===null || Math.abs(o[0]-val) < Math.abs(best[0]-val)) ? o : best, null);
+  return [nearest || [val, String(val)], true];
+}
+
+function buildSelect(key, def, inst){
+  const val = fieldGetRaw(inst, key);
+  const [current, approx] = resolveCurrentOption(def, val);
+  const btn = el('button','gsel');
+  if(approx) btn.title = `Stored value in your file is ${val}, which isn't one of this tool's known options — showing the closest match.`;
+  btn.innerHTML = `${current[2] ? '<span class="warn-ico">⚠</span>' : ''}${approx ? '<span class="approx">≈</span>' : ''}<span>${current[1]}</span><span class="chev">▾</span>`;
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const already = btn.parentElement.querySelector('.gsel-menu');
+    closeAllMenus();
+    if(already) return;
+    const menu = el('div','gsel-menu');
+    def.options.forEach(opt=>{
+      const row = el('div','opt');
+      row.innerHTML = `<span class="ck">${opt[0]===current[0] ? '✓' : ''}</span><span>${opt[1]}</span>${opt[2] ? '<span class="warn-ico">⚠</span>' : ''}`;
+      row.addEventListener('click', ()=>{
+        setFieldValue(inst.state, key, opt[0]);
+        markDirtyAndRerender(inst);
+      });
+      menu.appendChild(row);
+    });
+    btn.parentElement.appendChild(menu);
+  });
+  return btn;
+}
+
+function buildStepper(key, def, inst){
+  const val = fieldGetRaw(inst, key);
+  const wrap = el('div','gslider');
+  const input = el('input'); input.type='range'; input.min=def.min; input.max=def.max; input.step=1; input.value=val;
+  const label = el('span','val', def.display ? def.display(val) : val);
+  input.addEventListener('input', ()=>{ label.textContent = def.display ? def.display(+input.value) : input.value; });
+  input.addEventListener('change', ()=>{
+    setFieldValue(inst.state, key, +input.value);
+    markDirtyAndRerender(inst);
+  });
+  wrap.appendChild(input); wrap.appendChild(label);
+  return wrap;
+}
+
+function buildSlider(key, def, inst){
+  const raw = fieldGetRaw(inst, key);
+  const val = def.pct ? raw : raw;
+  const wrap = el('div','gslider');
+  const input = el('input'); input.type='range'; input.min=def.min; input.max=def.max; input.step=def.step; input.value=val;
+  const fmt = v => def.pct ? Math.round(v*100)+'%' : Number(v).toFixed(2);
+  const label = el('span','val', fmt(val));
+  input.addEventListener('input', ()=>{ label.textContent = fmt(+input.value); });
+  input.addEventListener('change', ()=>{
+    setFieldValue(inst.state, key, +input.value);
+    markDirtyAndRerender(inst);
+  });
+  wrap.appendChild(input); wrap.appendChild(label);
+  return wrap;
+}
+
+function buildNumber(key, def, inst){
+  const val = fieldGetRaw(inst, key);
+  const wrap = el('div','gstepper');
+  const step = def.step!==undefined ? def.step : 1;
+  const decimals = (String(step).split('.')[1] || '').length;
+  const clamp = v => {
+    if(def.min!==undefined) v = Math.max(def.min, v);
+    if(def.max!==undefined) v = Math.min(def.max, v);
+    return v;
+  };
+  const input = el('input','gnum'); input.type='number';
+  if(def.min!==undefined) input.min=def.min; if(def.max!==undefined) input.max=def.max;
+  if(def.step!==undefined) input.step=def.step;
+  input.value = val;
+  const commit = v => {
+    v = clamp(Number(v.toFixed(decimals)));
+    input.value = v;
+    setFieldValue(inst.state, key, v);
+    markDirtyAndRerender(inst);
+  };
+  // Native number-input spin arrows sit on top of the digits, so they're
+  // replaced with our own chevron buttons flanking the box instead — same
+  // up/down behaviour, but they no longer obscure the value.
+  const down = el('button','gstep','▾'); down.type='button'; down.title=`Decrease by ${step}`;
+  const up = el('button','gstep','▴'); up.type='button'; up.title=`Increase by ${step}`;
+  down.addEventListener('click', ()=>commit((parseFloat(input.value)||0) - step));
+  up.addEventListener('click', ()=>commit((parseFloat(input.value)||0) + step));
+  input.addEventListener('change', ()=>{
+    let v = parseFloat(input.value);
+    if(isNaN(v)) v = 0;
+    commit(v);
+  });
+  wrap.appendChild(down); wrap.appendChild(input); wrap.appendChild(up);
+  // Always reserve the unit slot (even when empty) so every number row's
+  // input box lands at the same x position, whether or not it has a unit.
+  wrap.appendChild(el('span','gunit', def.unit ? (def.zeroLabel && val===0 ? def.zeroLabel : def.unit) : ''));
+  return wrap;
+}
+
+function buildAuto(key, def, inst){
+  const f = inst.state.fieldIndex[key];
+  const wrap = el('div','res-row');
+  const input = el('input','gnum wide');
+  input.value = f ? (f.quoted ? f.rawValue.slice(1,-1) : f.rawValue) : '';
+  input.addEventListener('change', ()=>{
+    const t = FIELD_TYPES[key] || (f && f.quoted ? 'str' : (input.value.includes('.') ? 'float5' : 'int'));
+    FIELD_TYPES[key] = t;
+    setFieldValue(inst.state, key, t==='str' ? input.value : parseFloat(input.value));
+    markDirtyAndRerender(inst);
+  });
+  wrap.appendChild(input);
+  return wrap;
+}
+
+function buildResolution(key, def, inst){
+  const w = fieldGetRaw(inst,'full_width'), h = fieldGetRaw(inst,'full_height');
+  const presets = [
+    [640,480],[720,400],[800,600],[832,624],[1024,768],[1152,864],[1152,870],
+    [1280,720],[1280,800],[1280,1024],[1440,900],[1600,900],[1600,1200],[1680,1050],
+    [1920,540],[1920,1080],[1920,1200],[2560,720],[2560,1080],[2560,1440],
+    [3200,900],[3520,990],[3840,1080],[3840,2160],[5760,1080],[5760,1200],
+  ];
+  const btn = el('button','gsel');
+  btn.innerHTML = `<span>${w}×${h}</span><span class="chev">▾</span>`;
+  btn.addEventListener('click',(e)=>{
+    e.stopPropagation();
+    const already = btn.parentElement.querySelector('.gsel-menu');
+    closeAllMenus();
+    if(already) return;
+    const menu = el('div','gsel-menu');
+    presets.forEach(([pw,ph])=>{
+      const row = el('div','opt');
+      row.innerHTML = `<span class="ck">${pw===w&&ph===h?'✓':''}</span><span>${pw}×${ph}</span>`;
+      row.addEventListener('click', ()=>{
+        ['full_width','win_width'].forEach(k=>setFieldValue(inst.state,k,pw));
+        ['full_height','win_height'].forEach(k=>setFieldValue(inst.state,k,ph));
+        markDirtyAndRerender(inst);
+      });
+      menu.appendChild(row);
+    });
+    const customRow = el('div','opt','Custom…');
+    customRow.style.borderTop = '1px solid var(--border)'; customRow.style.marginTop='4px'; customRow.style.paddingTop='9px';
+    customRow.addEventListener('click', ()=>{
+      const nw = prompt('Width in pixels', w); if(!nw) return;
+      const nh = prompt('Height in pixels', h); if(!nh) return;
+      ['full_width','win_width'].forEach(k=>setFieldValue(inst.state,k,parseInt(nw,10)));
+      ['full_height','win_height'].forEach(k=>setFieldValue(inst.state,k,parseInt(nh,10)));
+      markDirtyAndRerender(inst);
+    });
+    menu.appendChild(customRow);
+    btn.parentElement.appendChild(menu);
+  });
+  return btn;
+}
+
+/* ------------------------------- Drawer ------------------------------- */
+function openDrawer(key, def, inst){
+  $('#drawerTitle').textContent = def.label;
+  $('#drawerKey').textContent = def.type==='resolution' ? '(full_width / full_height / win_width / win_height)' : key;
+  const body = $('#drawerBody');
+  let tagHtml = '';
+  if(def.group && def.group.startsWith('ext:vr')) tagHtml = '<span class="drawer-tag vr">VR / Headset</span>';
+  else if(def.group && def.group.startsWith('ext:')) tagHtml = '<span class="drawer-tag obscure">Advanced / Internal</span>';
+  else if(def.type==='auto') tagHtml = '<span class="drawer-tag obscure">Unrecognized in your file</span>';
+
+  let currentHtml = '';
+  if(def.type!=='resolution' && def.type!=='auto'){
+    const raw = fieldGetRaw(inst, key);
+    currentHtml = `<div class="drawer-values"><div><span>Current raw value</span><b style="color:var(--text-bright)">${raw}</b></div></div>`;
+  }
+  let diagram = '';
+  if(key==='draw_distance') diagram = drawDistanceDiagram();
+  if(key==='land_anisotropy') diagram = anisotropyDiagram();
+  if(key==='or_ipd' || key==='or_sipdc') diagram = ipdDiagram();
+
+  const warnText = def.warnNote !== undefined ? def.warnNote : (isCurrentValueFlagged(key, def, inst) ? VRAM_WARN : null);
+  const warnHtml = warnText ? `<div class="drawer-callout warn"><span class="cicon">!</span><span>${warnText}</span></div>` : '';
+  const restartHtml = def.restartNote ? `<div class="drawer-callout restart"><span class="cicon">↻</span><span>${def.restartNote}</span></div>` : '';
+
+  body.innerHTML = `${tagHtml}${warnHtml}${restartHtml}<p>${def.tip || 'No description available for this setting yet.'}</p>${diagram}${currentHtml}${def.learnMore ? `<a class="drawer-learn" href="${def.learnMore}" target="_blank" rel="noopener">Learn more on the IL‑2 Sturmovik forums ↗</a>` : ''}`;
+  $('#drawer').classList.add('open');
+  $('#drawerOverlay').classList.add('open');
+}
+function closeDrawer(){ $('#drawer').classList.remove('open'); $('#drawerOverlay').classList.remove('open'); }
+$('#drawerClose').addEventListener('click', closeDrawer);
+$('#drawerOverlay').addEventListener('click', closeDrawer);
+
+function drawDistanceDiagram(){
+  return `<div class="drawer-diagram"><svg width="100%" height="70" viewBox="0 0 340 70">
+    <line x1="10" y1="50" x2="330" y2="50" stroke="#463f34" stroke-width="2"/>
+    <circle cx="20" cy="50" r="4" fill="#d9a44b"/>
+    <text x="10" y="65" font-size="9" fill="#8a8377">40km</text>
+    <path d="M40 50 L 150 30 L 260 20 L 320 16" stroke="#7a96d1" stroke-width="1.5" fill="none" stroke-dasharray="3,3"/>
+    <text x="290" y="65" font-size="9" fill="#8a8377">150km</text>
+    <text x="120" y="15" font-size="9" fill="#efe8da">visible terrain →</text>
+  </svg></div>`;
+}
+function anisotropyDiagram(){
+  return `<div class="drawer-diagram"><svg width="100%" height="80" viewBox="0 0 340 80">
+    <polygon points="10,70 330,70 200,20 60,20" fill="#332c22" stroke="#463f34"/>
+    <line x1="10" y1="70" x2="90" y2="30" stroke="#c85c4a" stroke-width="2"/>
+    <text x="8" y="15" font-size="9" fill="#c85c4a">low AF: blurry near horizon</text>
+    <line x1="330" y1="70" x2="250" y2="30" stroke="#7fae6d" stroke-width="2"/>
+    <text x="215" y="15" font-size="9" fill="#7fae6d">high AF: crisp near horizon</text>
+  </svg></div>`;
+}
+function ipdDiagram(){
+  return `<div class="drawer-diagram"><svg width="100%" height="60" viewBox="0 0 340 60">
+    <circle cx="140" cy="30" r="8" fill="#7a96d1"/><circle cx="200" cy="30" r="8" fill="#7a96d1"/>
+    <line x1="140" y1="30" x2="200" y2="30" stroke="#8a8377" stroke-dasharray="2,2"/>
+    <text x="130" y="52" font-size="9" fill="#8a8377">interpupillary distance</text>
+  </svg></div>`;
+}
+
+/* ------------------------------ Extended toggle ------------------------------ */
+$('#extToggle').addEventListener('click', ()=>{
+  $('#extToggle').classList.toggle('open');
+  $('#extPanel').classList.toggle('open');
+});
+
+/* ------------------------------ File I/O ------------------------------ */
+async function openViaFsApi(){
+  const pickerOpts = {
+    types:[{ description:'IL-2 startup.cfg', accept:{'text/plain':['.cfg']} }],
+    excludeAcceptAllOption:false,
+  };
+  // Default to wherever we last opened/refreshed a file, instead of the
+  // browser's default (usually Documents) — makes re-adding a second
+  // install's file, or re-opening after moving it, one click faster.
+  if(App.lastHandle) pickerOpts.startIn = App.lastHandle;
+  let handle;
+  try{
+    [handle] = await window.showOpenFilePicker(pickerOpts);
+  }catch(err){
+    if(err && err.name==='AbortError') return; // user cancelled the picker — do nothing
+    if(App.lastHandle){
+      // startIn can itself throw in some browsers if the remembered handle
+      // is stale (its folder moved/was deleted) — retry once without it
+      // before giving up and falling back entirely.
+      try{
+        delete pickerOpts.startIn;
+        [handle] = await window.showOpenFilePicker(pickerOpts);
+      }catch(err2){
+        if(err2 && err2.name==='AbortError') return;
+        return fallbackAfterFsApiError(err2);
+      }
+    } else {
+      return fallbackAfterFsApiError(err);
+    }
+  }
+  try{
+    const file = await handle.getFile();
+    const text = await file.text();
+    App.lastHandle = handle;
+    promptAddInstall({ mode:'fsapi', handle, fileName:file.name, text });
+  }catch(err){
+    console.error(err);
+    toast('Could not read that file.', true);
+  }
+}
+
+function fallbackAfterFsApiError(err){
+  // Some hosting contexts (an in-app preview panel, an iframe, certain
+  // browser policies) block the File System Access API outright with a
+  // SecurityError even though the function exists. Don't dead-end —
+  // silently fall back to the plain upload/download flow, which works
+  // everywhere a <input type=file> and downloads work.
+  console.warn('File System Access API unavailable, falling back to upload/download:', err);
+  App.fsApiSupported = false;
+  openViaFallback();
+}
+
+function openViaFallback(){
+  const input = el('input'); input.type='file'; input.accept='.cfg,text/plain';
+  input.addEventListener('change', ()=>{
+    const file = input.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=> promptAddInstall({ mode:'fallback', handle:null, fileName:file.name, text:reader.result });
+    reader.readAsText(file);
+  });
+  input.click();
+}
+
+function openFile(){
+  if(App.fsApiSupported) openViaFsApi(); else openViaFallback();
+}
+// The toolbar's "+ Open startup.cfg…" surfaces the same guided page you see
+// on first run (with the common-locations list) rather than jumping
+// straight to the OS file picker — the picker itself is triggered from the
+// primary button inside that guided view (and on the very first run, the
+// empty-state page's own button).
+$('#btnAddInstall').addEventListener('click', ()=>{ renderPathHints($('#pathHintsModal')); openModal('addInstallModal'); });
+$('#btnModalOpen').addEventListener('click', ()=>{ closeModal('addInstallModal'); openFile(); });
+$('#btnEmptyOpen').addEventListener('click', openFile);
+
+/* Re-read the linked file from disk, discarding any in-app edits that
+   haven't been saved. Only available for files opened via the File System
+   Access API (we hold a live handle); files opened through the plain
+   upload fallback have no handle to re-read from. */
+async function refreshActive(){
+  const inst = activeInstall(); if(!inst) return;
+  if(inst.mode!=='fsapi' || !inst.handle){
+    toast("This file isn't linked for direct refresh — use Open startup.cfg… again to pick up outside changes.", true);
+    return;
+  }
+  if(inst.dirty && !confirm('You have unsaved changes in this app for this file. Refreshing will discard them and reload straight from disk. Continue?')){
+    return;
+  }
+  try{
+    const file = await inst.handle.getFile();
+    const text = await file.text();
+    const state = parseCfgText(text);
+    if(!state.hasGraphics){ toast('That file no longer has a [KEY = graphics] section — refresh aborted.', true); return; }
+    inst.state = state;
+    inst.dirty = false;
+    App.lastHandle = inst.handle;
+    renderApp();
+    toast(`Refreshed "${inst.label}" from disk.`);
+  }catch(err){
+    console.error(err);
+    toast('Could not refresh — the file may have moved or permission was revoked. Try Open startup.cfg… again.', true);
+  }
+}
+$('#btnRefresh').addEventListener('click', refreshActive);
+
+let pendingInstall = null;
+function promptAddInstall({mode, handle, fileName, text}){
+  const state = parseCfgText(text);
+  if(!state.hasGraphics){
+    toast('No [KEY = graphics] section found in that file — is this a valid startup.cfg?', true);
+    return;
+  }
+  pendingInstall = { mode, handle, fileName, state };
+  $('#labelFileName').textContent = fileName;
+  const guess = App.installs.length===0 ? 'Main Install' : `Install ${App.installs.length+1}`;
+  $('#labelInput').value = guess;
+  openModal('labelModal');
+  setTimeout(()=>$('#labelInput').select(), 50);
+}
+$('#btnConfirmLabel').addEventListener('click', ()=>{
+  if(!pendingInstall) return;
+  const label = $('#labelInput').value.trim() || 'Install';
+  const inst = { id:uid(), label, mode:pendingInstall.mode, handle:pendingInstall.handle,
+                 fileName:pendingInstall.fileName, state:pendingInstall.state, dirty:false };
+  App.installs.push(inst);
+  App.activeId = inst.id;
+  pendingInstall = null;
+  closeModal('labelModal');
+  renderApp();
+  toast(`Loaded "${inst.label}".`);
+});
+
+$('#installSelect').addEventListener('change', (e)=>{
+  App.activeId = e.target.value || null;
+  renderApp();
+});
+
+async function saveActive(forceDownload){
+  const inst = activeInstall(); if(!inst) return;
+  const text = serialize(inst.state);
+  if(inst.mode==='fsapi' && inst.handle && !forceDownload){
+    try{
+      const writable = await inst.handle.createWritable();
+      await writable.write(text);
+      await writable.close();
+      inst.dirty = false;
+      renderToolbar();
+      toast(`Saved to ${inst.fileName}.`);
+      return;
+    }catch(err){
+      console.error(err);
+      toast('Direct save failed (permission?) — downloading a copy instead.', true);
+    }
+  }
+  downloadText(inst.fileName || 'startup.cfg', text);
+  toast(`Downloaded ${inst.fileName}. Move it into your game's data folder, overwriting the original.`);
+}
+function downloadText(filename, text){
+  const blob = new Blob([text], {type:'text/plain'});
+  const a = el('a'); a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+}
+$('#btnSave').addEventListener('click', ()=>saveActive(false));
+$('#btnSaveAs').addEventListener('click', ()=>saveActive(true));
+
+/* ------------------------------ Raw view ------------------------------ */
+function updateRawView(){
+  const inst = activeInstall(); if(!inst) return;
+  $('#rawViewText').textContent = serialize(inst.state);
+}
+$('#btnRaw').addEventListener('click', ()=>{ updateRawView(); openModal('rawModal'); });
+
+/* ------------------------------ Presets ------------------------------ */
+function allKnownGraphicsKeys(inst){
+  const keys = new Set();
+  Object.keys(SCHEMA).forEach(k=>{ if(!k.startsWith('__') && inst.state.fieldIndex[k]) keys.add(k); });
+  Object.keys(EXT_SCHEMA).forEach(k=>{ if(inst.state.fieldIndex[k]) keys.add(k); });
+  ['full_width','full_height','win_width','win_height'].forEach(k=>{ if(inst.state.fieldIndex[k]) keys.add(k); });
+  return Array.from(keys);
+}
+
+$('#btnPresets').addEventListener('click', ()=>{ renderPresetList(); openModal('presetModal'); });
+
+function renderPresetList(){
+  const list = $('#presetList');
+  list.innerHTML = '';
+  $('#presetEmpty').style.display = App.presets.length ? 'none' : '';
+  App.presets.forEach(p=>{
+    const item = el('div','preset-item');
+    item.innerHTML = `<div><div class="pname">${p.name}</div><div class="pmeta">${Object.keys(p.values).length} settings · saved ${p.createdAt}</div></div>`;
+    const actions = el('div','preset-actions');
+    const applyBtn = el('button','','Apply');
+    applyBtn.addEventListener('click', ()=>applyPreset(p));
+    const delBtn = el('button','danger','Delete');
+    delBtn.addEventListener('click', ()=>{
+      App.presets = App.presets.filter(x=>x.id!==p.id);
+      renderPresetList();
+    });
+    actions.appendChild(applyBtn); actions.appendChild(delBtn);
+    item.appendChild(actions);
+    list.appendChild(item);
+  });
+}
+
+$('#btnSavePreset').addEventListener('click', ()=>{
+  const inst = activeInstall(); if(!inst) return;
+  const name = $('#presetNameInput').value.trim();
+  if(!name){ toast('Give the preset a name first.', true); return; }
+  const values = {};
+  allKnownGraphicsKeys(inst).forEach(k=> values[k] = fieldGetRaw(inst,k));
+  App.presets.push({ id:uid(), name, values, createdAt: new Date().toLocaleString() });
+  $('#presetNameInput').value='';
+  renderPresetList();
+  toast(`Preset "${name}" saved.`);
+});
+
+function applyPreset(p){
+  const inst = activeInstall(); if(!inst) return;
+  let applied=0, skipped=0;
+  Object.entries(p.values).forEach(([k,v])=>{
+    if(inst.state.fieldIndex[k]){ setFieldValue(inst.state, k, v); applied++; } else skipped++;
+  });
+  inst.dirty = true;
+  closeModal('presetModal');
+  renderSettings();
+  toast(`Applied "${p.name}" (${applied} settings${skipped?`, ${skipped} not present in this file`:''}).`);
+}
+
+$('#btnExportPresets').addEventListener('click', ()=>{
+  if(!App.presets.length){ toast('No presets to export yet.', true); return; }
+  downloadText('il2-graphics-presets.json', JSON.stringify(App.presets, null, 2));
+});
+$('#btnImportPresets').addEventListener('click', ()=> $('#importPresetsInput').click());
+$('#importPresetsInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = JSON.parse(reader.result);
+      if(!Array.isArray(data)) throw new Error('bad format');
+      data.forEach(p=>{ if(p && p.name && p.values) App.presets.push({...p, id:uid()}); });
+      renderPresetList();
+      toast(`Imported ${data.length} preset(s).`);
+    }catch(err){ toast('That file does not look like a presets export.', true); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+/* ------------------------------ Modal helpers ------------------------------ */
+function openModal(id){ $('#'+id).classList.add('open'); }
+function closeModal(id){ $('#'+id).classList.remove('open'); }
+$$('[data-close-modal]').forEach(b=> b.addEventListener('click', ()=>closeModal(b.dataset.closeModal)));
+$$('.modal-overlay').forEach(m=> m.addEventListener('click', (e)=>{ if(e.target===m) m.classList.remove('open'); }));
+
+/* ------------------------------ Path hints ------------------------------
+   Rendered as a one-per-line list (both on the first-run page and inside
+   the "Open startup.cfg…" modal used to add further installs). */
+function renderPathHints(wrap){
+  if(!wrap) return;
+  wrap.innerHTML = '';
+  COMMON_PATHS.forEach(p=>{
+    const chip = el('div','path-hint');
+    chip.innerHTML = `<span>${p}</span>`;
+    const copyBtn = el('button','', 'copy');
+    copyBtn.addEventListener('click', ()=>{
+      navigator.clipboard && navigator.clipboard.writeText(p).then(()=>toast('Path copied.'));
+    });
+    chip.appendChild(copyBtn);
+    wrap.appendChild(chip);
+  });
+}
+renderPathHints($('#pathHints'));
+
+window.addEventListener('beforeunload', (e)=>{
+  if(App.installs.some(i=>i.dirty)){
+    e.preventDefault(); e.returnValue='';
+  }
+});
+
+renderApp();
+</script>
+</body>
+</html>

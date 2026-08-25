@@ -51,7 +51,9 @@ a{color:var(--amber);}
   position:sticky;top:0;z-index:40;
   box-shadow:0 4px 14px rgba(0,0,0,.35);
 }
-.app-brand{display:flex;align-items:center;gap:10px;margin-right:8px;}
+.app-brand{display:flex;align-items:center;gap:10px;margin-right:8px;text-decoration:none;color:inherit;border-radius:4px;padding:2px 6px;margin-left:-6px;}
+.app-brand:hover{background:rgba(255,255,255,.05);}
+.app-brand:hover .app-brand-text b{color:var(--amber-bright);}
 .app-brand .plane{font-size:20px;filter:saturate(0) brightness(1.6) sepia(1) hue-rotate(-10deg) saturate(3);}
 .app-brand-text{display:flex;flex-direction:column;line-height:1.1;}
 .app-brand-text b{color:var(--text-bright);font-size:14px;letter-spacing:.5px;}
@@ -263,13 +265,13 @@ table.raw td{max-width:340px;overflow-wrap:anywhere;}
 <body>
 
 <div class="toolbar">
-  <div class="app-brand">
+  <a class="app-brand" href="index.html" title="All IL-2 Korea tools">
     <span class="plane">✈</span>
     <div class="app-brand-text">
       <b>CAREER FILE VIEWER</b>
       <span>IL-2 Korea — Pilot Career Records</span>
     </div>
-  </div>
+  </a>
   <div class="tb-sep"></div>
   <button class="tb-btn primary" id="btnOpen">Open career .db…</button>
   <button class="tb-btn" id="btnReload" disabled>Reload</button>
