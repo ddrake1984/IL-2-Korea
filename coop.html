@@ -1300,8 +1300,10 @@ for(const p of DATA_HINTS){
   $('#pathHints').appendChild(row);
 }
 
-$('#btnFolder').addEventListener('click', pickFolder);
-$('#btnEmptyFolder').addEventListener('click', pickFolder);
+// Wrapped, not passed directly: pickFolder takes an optional folder, and a
+// listener would hand it the click event as that argument.
+$('#btnFolder').addEventListener('click', ()=> pickFolder());
+$('#btnEmptyFolder').addEventListener('click', ()=> pickFolder());
 $('#btnFile').addEventListener('click', pickFile);
 $('#btnConvert').addEventListener('click', convert);
 $('#btnPreview').addEventListener('click', ()=>{
