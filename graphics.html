@@ -1577,9 +1577,14 @@ async function il2Connect(container, onReady){
 }
 // startup.cfg sits directly in the data folder, so once the folder is usable
 // there is nothing left to ask: open it.
-/* Reopen the startup.cfg the picker gave us last time. The shared IL-2 folder
-   is no use here — Chrome hides .cfg files from directory handles entirely —
-   so this tool remembers the file itself instead. */
+/* Open startup.cfg on arrival.
+
+   Two routes, tried in order: the exact file handle the picker gave us last
+   time, then a walk of the shared IL-2 folder. The walk is modelled on the
+   folder-picker page, which demonstrably finds this file — each directory is
+   read inside its own try so one unreadable folder is stepped over instead of
+   abandoning the search, and depth is capped because an install tree is deep
+   and startup.cfg lives near the top of it. */
 (async () => {
   const container = $('#pathHints');
   const row = el('div', 'saved-folder');
@@ -1591,55 +1596,95 @@ async function il2Connect(container, onReady){
 
   try{ await il2db(); }
   catch(err){
-    return say('Remembering your startup.cfg needs this page served over http — ' +
-               'opened straight from disk, the browser gives it no storage.');
+    return say('Opening your startup.cfg automatically needs this page served over ' +
+               'http — from disk the browser gives it no storage.');
   }
 
-  const handle = await il2GetKey(IL2_CFG_KEY);
-  if(!handle){
-    return say('Open your <code>startup.cfg</code> once and this page will reopen it ' +
-               'automatically from then on. Chrome will not let a folder reach ' +
-               '<code>.cfg</code> files, so it has to be picked directly the first time.');
-  }
-
-  const load = async () => {
+  const loadFrom = async (handle) => {
     const file = await handle.getFile();
     App.lastHandle = handle;
     promptAddInstall({ mode:'fsapi', handle, fileName:file.name, text: await file.text() });
     row.remove();
   };
 
-  // Opening the file only needs read. Asking for readwrite here is what kept
-  // this failing from cold: browsers hand back read access readily and hold
-  // write access far more tightly, so a readwrite query says "prompt" for a
-  // file that can be read perfectly well. Write permission is requested at
-  // save time instead, where there is a real click to justify it.
-  let perm = 'denied';
-  try{ perm = await handle.queryPermission({ mode:'read' }); }catch(err){}
+  const readable = async (h, mode) => {
+    if(!h || !h.queryPermission) return false;
+    try{ return (await h.queryPermission({ mode: mode || 'read' })) === 'granted'; }
+    catch(err){ return false; }
+  };
 
-  if(perm === 'granted'){
-    try{ return await load(); }
-    catch(err){
-      console.error('Reopening the remembered startup.cfg failed:', err);
-      return say('Could not reopen the remembered <code>startup.cfg</code> — <b>' +
-                 (err && err.name ? err.name : 'Error') + '</b>: ' +
-                 (err && err.message ? err.message : String(err)) +
-                 '. Open it again below and it will be remembered afresh.');
+  // --- route 1: the file itself, remembered from a manual open ---
+  const fileHandle = await il2GetKey(IL2_CFG_KEY);
+  if(fileHandle && await readable(fileHandle)){
+    try{ return await loadFrom(fileHandle); }
+    catch(err){ console.warn('Remembered startup.cfg would not open:', err); }
+  }
+
+  // --- route 2: find it in the shared folder ---
+  const dirHandle = await il2Get();
+
+  async function* walk(dir, depth){
+    try{
+      for await (const [name, entry] of dir.entries()){
+        if(entry.kind === 'directory'){
+          if(depth > 0) yield* walk(entry, depth - 1);
+        } else {
+          yield [name, entry];
+        }
+      }
+    }catch(err){ /* unreadable folder — step over it, as folder-picker does */ }
+  }
+
+  const findStartup = async (dir) => {
+    for await (const [name, entry] of walk(dir, 2)){
+      if(name.toLowerCase() === 'startup.cfg') return entry;
+    }
+    return null;
+  };
+
+  if(dirHandle && await readable(dirHandle)){
+    try{
+      const found = await findStartup(dirHandle);
+      if(found){
+        await loadFrom(found);
+        il2PutKey(IL2_CFG_KEY, found).catch(()=>{});   // remember it for next time
+        return;
+      }
+      say('Could not find <code>startup.cfg</code> anywhere in <code>' + dirHandle.name +
+          '</code>. Open it once below and this page will remember it.');
+      return;
+    }catch(err){
+      console.error('Searching the IL-2 folder failed:', err);
+      say('Could not search <code>' + dirHandle.name + '</code> — <b>' +
+          (err && err.name ? err.name : 'Error') + '</b>: ' +
+          (err && err.message ? err.message : String(err)));
+      return;
     }
   }
 
-  // Browsers drop file access when they restart; one click restores it.
+  // --- neither route is ready ---
+  const target = fileHandle || dirHandle;
+  if(!target){
+    return say('Open your <code>startup.cfg</code> once and this page will reopen it every ' +
+               'time after. Setting your IL-2 folder on the ' +
+               '<a href="index.html">tools index</a> works too.');
+  }
+
   const btn = el('button', 'tb-btn primary');
-  btn.textContent = 'Open remembered startup.cfg';
+  btn.textContent = fileHandle ? 'Open remembered startup.cfg' : 'Use saved IL-2 folder';
   btn.addEventListener('click', async () => {
     let ok = false;
-    try{ ok = (await handle.requestPermission({ mode:'read' })) === 'granted'; }
+    try{ ok = (await target.requestPermission({ mode:'read' })) === 'granted'; }
     catch(err){ console.error(err); }
     if(!ok) return toast('Access was not granted — open the file manually instead.', true);
-    try{ await load(); }
-    catch(err){ toast('Could not reopen it: ' + err.message, true); }
+    try{
+      const found = target.kind === 'file' ? target : await findStartup(target);
+      if(!found) return toast('No startup.cfg found in that folder.', true);
+      await loadFrom(found);
+    }catch(err){ toast('Could not open it: ' + err.message, true); }
   });
-  say('Remembered <code>startup.cfg</code> — the browser needs one click to reopen it.', btn);
+  say('Remembered ' + (fileHandle ? '<code>startup.cfg</code>' : '<code>' + target.name + '</code>') +
+      ' — the browser needs one click to reconnect it.', btn);
 })();
 
 window.addEventListener('beforeunload', (e)=>{
