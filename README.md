@@ -53,8 +53,14 @@ the **file** rather than the folder: open your `startup.cfg` once and it stores
 that handle, then reopens it on every later visit. As with the folder, browsers
 drop file access on restart, so occasionally it asks for one click.
 
-**Clear** forgets the folder so you can choose a different one. It changes
-nothing on disk — it only wipes what the browser remembers.
+**Clear** forgets everything the browser is holding for these tools — the folder
+and any individual files a tool has remembered, such as the `startup.cfg` the
+Graphics Configurator keeps. Clearing only the folder would leave that tool still
+opening a file while the others had gone blank, which reads as Clear having
+failed. It changes nothing on disk.
+
+The bar says how many files are remembered alongside the folder, and offers
+Clear even when only a file is held and no folder is set.
 
 This needs Chrome or Edge. Firefox and Safari have no way to grant a page access
 to a folder, so there the tools fall back to asking for files one at a time, and
