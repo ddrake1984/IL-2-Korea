@@ -1502,8 +1502,12 @@ async function il2Connect(container, onReady){
       await onReady(handle);
     }catch(err){
       console.error('Using the saved IL-2 folder failed:', err);
-      say('Could not use the saved folder <code>' + handle.name + '</code> — ' +
-          (err && err.message ? err.message : err) + '. Open the file manually below.');
+      // The browser's own error name matters — NotFoundError and NotAllowedError
+      // mean completely different things and want completely different fixes.
+      say('Could not open <code>startup.cfg</code> in the saved folder ' +
+          '<code>' + handle.name + '</code> — <b>' + (err && err.name ? err.name : 'Error') +
+          '</b>: ' + (err && err.message ? err.message : String(err)) +
+          '. Open the file manually below.');
     }
     return;
   }
@@ -1526,53 +1530,13 @@ async function il2Connect(container, onReady){
 // there is nothing left to ask: open it.
 il2Connect($('#pathHints'), async (dir) => {
   if(App.installs.length) return;               // something is already open
-
-  // Look the file up by listing the folder rather than asking for it by name.
-  // getFileHandle matches exactly, and Windows filenames do not, so a folder
-  // holding Startup.cfg answers "not found" to a request for startup.cfg.
-  const findFile = async (d, wanted) => {
-    const want = wanted.toLowerCase();
-    for await (const [name, h] of d.entries()){
-      if(h.kind === 'file' && name.toLowerCase() === want) return h;
-    }
-    return null;
-  };
-
-  // Try both routes: the exact-name lookup, and a case-insensitive listing.
-  const lookUp = async (d) => {
-    try{ return await d.getFileHandle('startup.cfg'); }catch(err){}
-    return findFile(d, 'startup.cfg');
-  };
-
-  let handle = await lookUp(dir);
-  if(!handle){                                  // maybe they picked the install root
-    try{ handle = await lookUp(await dir.getDirectoryHandle('data')); }
-    catch(err){ /* no data folder inside — fall through to the report below */ }
-  }
-  if(!handle){
-    // Report the whole picture, not a truncated sample: how much the page can
-    // see, and every .cfg among it. A short list that stops before the file
-    // would be looking for proves nothing either way.
-    let files = 0, dirs = 0;
-    const cfgs = [], startupish = [];
-    for await (const [name, h] of dir.entries()){
-      if(h.kind === 'directory'){ dirs++; continue; }
-      files++;
-      if(/\.cfg$/i.test(name)) cfgs.push(name);
-      if(/startup/i.test(name)) startupish.push(name);
-    }
-    throw new Error(
-      'no startup.cfg in "' + dir.name + '". That folder shows ' + files + ' files and ' +
-      dirs + ' folders. .cfg files in it: ' + (cfgs.join(', ') || 'none') +
-      '. Names containing "startup": ' + (startupish.join(', ') || 'none'));
-  }
-
-  const file = await handle.getFile();
-  const text = await file.text();
-
-  // Same route as opening it by hand — there is no naming step in either now.
+  // The folder is the game's data folder, so the file is simply startup.cfg in it.
+  // Nothing is searched for: if this throws, il2Connect reports the browser's own
+  // error rather than a paraphrase of it.
+  const handle = await dir.getFileHandle('startup.cfg');
+  const file   = await handle.getFile();
   App.lastHandle = handle;
-  promptAddInstall({ mode:'fsapi', handle, fileName:file.name, text });
+  promptAddInstall({ mode:'fsapi', handle, fileName:file.name, text: await file.text() });
 });
 
 window.addEventListener('beforeunload', (e)=>{
