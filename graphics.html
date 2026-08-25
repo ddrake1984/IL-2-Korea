@@ -100,6 +100,17 @@ button{font-family:inherit;cursor:pointer;}
 .saved-folder code{font-family:Consolas,Menlo,monospace;color:var(--text-bright);}
 .saved-folder a{color:var(--amber);}
 .saved-folder a:hover{color:var(--amber-bright);}
+.saved-list{max-width:560px;margin:0 auto 16px;text-align:left;}
+.saved-head{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--text-faint);margin-bottom:8px;}
+.saved-head code{font-family:Consolas,Menlo,monospace;text-transform:none;letter-spacing:0;}
+.saved-row{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;
+  background:var(--row-bg);border:1px solid var(--border);border-radius:4px;
+  padding:9px 13px;margin-bottom:5px;color:inherit;font-family:inherit;text-align:left;cursor:pointer;
+}
+.saved-row:hover{background:var(--row-bg-hover);border-color:var(--amber);}
+.saved-row .sr-name{font-size:14.5px;font-weight:700;color:var(--text-bright);}
+.saved-row:hover .sr-name{color:var(--amber-bright);}
 .path-hints{display:flex;flex-direction:column;gap:6px;margin:14px auto 18px;max-width:520px;text-align:left;}
 .path-hint{
   background:#1f1c18;border:1px solid var(--border);border-radius:4px;padding:7px 11px;font-size:11.5px;
@@ -1528,15 +1539,41 @@ async function il2Connect(container, onReady){
 }
 // startup.cfg sits directly in the data folder, so once the folder is usable
 // there is nothing left to ask: open it.
+// Enumerate the folder and use the handles the iterator returns, which is what
+// the career and mission tools do. Asking for the file by name with
+// getFileHandle is what failed here, with 'Name is not allowed'.
 il2Connect($('#pathHints'), async (dir) => {
   if(App.installs.length) return;               // something is already open
-  // The folder is the game's data folder, so the file is simply startup.cfg in it.
-  // Nothing is searched for: if this throws, il2Connect reports the browser's own
-  // error rather than a paraphrase of it.
-  const handle = await dir.getFileHandle('startup.cfg');
-  const file   = await handle.getFile();
-  App.lastHandle = handle;
-  promptAddInstall({ mode:'fsapi', handle, fileName:file.name, text: await file.text() });
+
+  const cfgs = [];
+  for await (const [name, h] of dir.entries()){
+    if(h.kind === 'file' && /\.cfg$/i.test(name)) cfgs.push({ name, handle:h });
+  }
+  cfgs.sort((x,y)=> x.name.localeCompare(y.name));
+
+  const open = async (entry) => {
+    const file = await entry.handle.getFile();
+    App.lastHandle = entry.handle;
+    promptAddInstall({ mode:'fsapi', handle:entry.handle, fileName:file.name, text: await file.text() });
+  };
+
+  const startup = cfgs.find(c => c.name.toLowerCase() === 'startup.cfg');
+  if(startup) return open(startup);
+
+  if(!cfgs.length) throw new Error('that folder contains no .cfg files at all');
+
+  // No startup.cfg by that name, but the folder has config files — list them
+  // so one click opens whichever is the right one.
+  const box = el('div', 'saved-list');
+  box.innerHTML = '<div class="saved-head">Config files in <code>' + dir.name + '</code></div>';
+  for(const c of cfgs){
+    const b = el('button', 'saved-row');
+    b.innerHTML = '<span class="sr-name">' + c.name + '</span>';
+    b.addEventListener('click', ()=> open(c).catch(err => toast('Could not open ' + c.name + ' — ' + err.message, true)));
+    box.appendChild(b);
+  }
+  const hints = $('#pathHints');
+  hints.parentNode.insertBefore(box, hints);
 });
 
 window.addEventListener('beforeunload', (e)=>{
