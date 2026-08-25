@@ -1538,21 +1538,33 @@ il2Connect($('#pathHints'), async (dir) => {
     return null;
   };
 
-  let handle = await findFile(dir, 'startup.cfg');
+  // Try both routes: the exact-name lookup, and a case-insensitive listing.
+  const lookUp = async (d) => {
+    try{ return await d.getFileHandle('startup.cfg'); }catch(err){}
+    return findFile(d, 'startup.cfg');
+  };
+
+  let handle = await lookUp(dir);
   if(!handle){                                  // maybe they picked the install root
-    try{ handle = await findFile(await dir.getDirectoryHandle('data'), 'startup.cfg'); }
+    try{ handle = await lookUp(await dir.getDirectoryHandle('data')); }
     catch(err){ /* no data folder inside — fall through to the report below */ }
   }
   if(!handle){
-    // Say what the page can actually see, so the next step is obvious rather
-    // than another round of guessing.
-    const seen = [];
+    // Report the whole picture, not a truncated sample: how much the page can
+    // see, and every .cfg among it. A short list that stops before the file
+    // would be looking for proves nothing either way.
+    let files = 0, dirs = 0;
+    const cfgs = [], startupish = [];
     for await (const [name, h] of dir.entries()){
-      if(h.kind === 'file') seen.push(name);
-      if(seen.length >= 10) break;
+      if(h.kind === 'directory'){ dirs++; continue; }
+      files++;
+      if(/\.cfg$/i.test(name)) cfgs.push(name);
+      if(/startup/i.test(name)) startupish.push(name);
     }
-    throw new Error('no startup.cfg in "' + dir.name + '". Files it can see: ' +
-                    (seen.join(', ') || '(none)'));
+    throw new Error(
+      'no startup.cfg in "' + dir.name + '". That folder shows ' + files + ' files and ' +
+      dirs + ' folders. .cfg files in it: ' + (cfgs.join(', ') || 'none') +
+      '. Names containing "startup": ' + (startupish.join(', ') || 'none'));
   }
 
   const file = await handle.getFile();
