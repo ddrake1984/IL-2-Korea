@@ -1317,6 +1317,14 @@ async function saveActive(forceDownload){
   const text = serialize(inst.state);
   if(inst.mode==='fsapi' && inst.handle && !forceDownload){
     try{
+      // The file was opened with read access only, so ask for write now. This
+      // runs from the Save click, which is the user gesture the browser wants
+      // before it will prompt.
+      if(inst.handle.queryPermission){
+        let p = await inst.handle.queryPermission({ mode:'readwrite' });
+        if(p !== 'granted') p = await inst.handle.requestPermission({ mode:'readwrite' });
+        if(p !== 'granted') throw new Error('write access was not granted');
+      }
       const writable = await inst.handle.createWritable();
       await writable.write(text);
       await writable.close();
@@ -1601,8 +1609,13 @@ async function il2Connect(container, onReady){
     row.remove();
   };
 
+  // Opening the file only needs read. Asking for readwrite here is what kept
+  // this failing from cold: browsers hand back read access readily and hold
+  // write access far more tightly, so a readwrite query says "prompt" for a
+  // file that can be read perfectly well. Write permission is requested at
+  // save time instead, where there is a real click to justify it.
   let perm = 'denied';
-  try{ perm = await handle.queryPermission({ mode:'readwrite' }); }catch(err){}
+  try{ perm = await handle.queryPermission({ mode:'read' }); }catch(err){}
 
   if(perm === 'granted'){
     try{ return await load(); }
@@ -1620,7 +1633,7 @@ async function il2Connect(container, onReady){
   btn.textContent = 'Open remembered startup.cfg';
   btn.addEventListener('click', async () => {
     let ok = false;
-    try{ ok = (await handle.requestPermission({ mode:'readwrite' })) === 'granted'; }
+    try{ ok = (await handle.requestPermission({ mode:'read' })) === 'granted'; }
     catch(err){ console.error(err); }
     if(!ok) return toast('Access was not granted — open the file manually instead.', true);
     try{ await load(); }

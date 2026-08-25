@@ -558,7 +558,7 @@ async function il2Get(){
 
 async function il2Permission(handle){
   if(!handle || !handle.queryPermission) return 'denied';
-  try{ return await handle.queryPermission({ mode:'readwrite' }); }
+  try{ return await handle.queryPermission({ mode:'read' }); }
   catch(err){ return 'denied'; }
 }
 
@@ -597,7 +597,7 @@ async function il2Connect(container, onReady){
   btn.textContent = 'Use saved folder';
   btn.addEventListener('click', async () => {
     let ok = false;
-    try{ ok = (await handle.requestPermission({ mode:'readwrite' })) === 'granted'; }
+    try{ ok = (await handle.requestPermission({ mode:'read' })) === 'granted'; }
     catch(err){ console.error(err); }
     if(ok){ row.remove(); onReady(handle); }
     else toast('Access was not granted — open the file manually instead.', true);
@@ -1203,6 +1203,13 @@ async function save(forceNew){
 
   if(App.mode === 'fsapi' && App.handle && !forceNew){
     try{
+      // Missions are opened with read access only, so ask for write now — this
+      // runs from the Save click, which is the gesture the browser wants.
+      if(App.handle.queryPermission){
+        let p = await App.handle.queryPermission({ mode:'readwrite' });
+        if(p !== 'granted') p = await App.handle.requestPermission({ mode:'readwrite' });
+        if(p !== 'granted') throw new Error('write access was not granted');
+      }
       const writable = await App.handle.createWritable();
       await writable.write(text);
       await writable.close();
