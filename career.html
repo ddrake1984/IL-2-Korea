@@ -1587,6 +1587,7 @@ function loadBytes(bytes, name, handle){
   $('#careerView').style.display = '';
   $('#btnReload').disabled = !handle;
   $('#btnClose').disabled = false;
+  markFileOpen();
   $$('.panel').forEach(p => { p.dataset.rendered = ''; p.innerHTML = ''; });
   App.tab = 'overview';
   renderTabs(); showPanel();
@@ -1724,7 +1725,26 @@ function promptForWasm(){
 $('#btnOpen').addEventListener('click', openFile);
 $('#btnEmptyOpen').addEventListener('click', openFile);
 $('#btnReload').addEventListener('click', reloadFile);
-$('#btnClose').addEventListener('click', closeFile);
+/* Opening a file does not change the URL, so the browser's Back button would
+   leave the site entirely — past the list the file was chosen from, which is
+   almost never what Back is reaching for. Pushing a state on open makes Back
+   close the file and return to that list; a second Back then leaves. */
+function markFileOpen(){
+  if(!history.state || !history.state.il2FileOpen){
+    history.pushState({ il2FileOpen:true }, '');
+  }
+}
+window.addEventListener('popstate', () => {
+  if(App.data) closeFile();
+});
+
+
+// Close goes through history so the two stay in step: without this the extra
+// entry would linger and Back would appear to do nothing.
+$('#btnClose').addEventListener('click', () => {
+  if(history.state && history.state.il2FileOpen) history.back();
+  else closeFile();
+});
 
 boot();
 

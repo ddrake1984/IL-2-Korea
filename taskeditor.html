@@ -319,6 +319,7 @@ code{font-family:Consolas,Menlo,monospace;font-size:.92em;}
     <span class="app-brand-text"><b>IL-2 KOREA TOOLS</b><span>Task Editor Missions</span></span>
   </a>
   <div class="tb-sep"></div>
+  <button class="tb-btn" id="btnBack" disabled>← Missions</button>
   <button class="tb-btn" id="btnOpen">＋ Open mission…</button>
   <button class="tb-btn primary" id="btnSave" disabled>💾 Save</button>
   <button class="tb-btn" id="btnSaveAs" disabled>Save As…</button>
@@ -684,6 +685,8 @@ const WX = [
 function renderWxBar(){
   const bar = $('#wxbar');
   bar.innerHTML = '';
+  // closePop() rebuilds this, and that can happen with no mission loaded.
+  if(!q()) return;
   for(const item of WX){
     const b = el('button');
     b.className = 'wx' + (App.openPop === item.key ? ' open' : '');
@@ -1070,7 +1073,7 @@ function renderAdvanced(){
 
 function renderToolbar(){
   const has = !!q();
-  for(const id of ['#btnSave','#btnSaveAs','#btnRaw']) $(id).disabled = !has;
+  for(const id of ['#btnSave','#btnSaveAs','#btnRaw','#btnBack']) $(id).disabled = !has;
   $('#btnRefresh').disabled = !(has && App.mode === 'fsapi');
   const status = $('#tbStatus');
   if(!has){
@@ -1118,6 +1121,7 @@ function loadText(text, fileName, handle, mode){
   App.dirty = false;
   closePop();
   renderAll();
+  markMissionOpen();
   toast(`Loaded ${fileName}.`);
   return true;
 }
@@ -1317,6 +1321,33 @@ document.addEventListener('keydown', e=>{
 window.addEventListener('resize', ()=>{ if(App.openPop) closePop(); });
 window.addEventListener('beforeunload', e=>{
   if(App.dirty){ e.preventDefault(); e.returnValue = ''; }
+});
+
+
+/* Opening a mission does not change the URL, so the browser's Back button
+   would leave the site entirely — past the list the mission was chosen from.
+   Pushing a state on open makes Back return to that list instead, and a
+   second Back then leaves. Unsaved work is confirmed first, and declining
+   restores the state so Back has not silently consumed a history entry. */
+function markMissionOpen(){
+  if(!history.state || !history.state.il2FileOpen){
+    history.pushState({ il2FileOpen:true }, '');
+  }
+}
+function closeMission(){
+  if(App.dirty && !confirm('This mission has unsaved changes. Go back and lose them?')) return false;
+  closePop();
+  App.data = null; App.handle = null; App.fileName = null; App.mode = null; App.dirty = false;
+  renderAll();
+  return true;
+}
+window.addEventListener('popstate', () => {
+  if(!q()) return;
+  if(!closeMission()) markMissionOpen();
+});
+$('#btnBack').addEventListener('click', () => {
+  if(history.state && history.state.il2FileOpen) history.back();
+  else closeMission();
 });
 
 renderAll();
