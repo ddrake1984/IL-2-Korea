@@ -192,6 +192,8 @@ footer .sep{margin:0 9px;opacity:.5;}
     </div>
     <button class="fb-btn primary" id="fbChoose">Choose folder…</button>
     <button class="fb-btn" id="fbAllow" style="display:none;">Reconnect</button>
+    <button class="fb-btn" id="fbPickCfg" style="display:none;"
+      title="Served over http, a folder will not surface startup.cfg — the file picker is the only route to it. Picked once, it is remembered like the folder.">Pick startup.cfg…</button>
     <button class="fb-btn" id="fbClear" style="display:none;"
       title="Forget the folder and any files the tools have remembered, so you can start again with a different install. Nothing on disk is changed or deleted — this only clears what the browser remembers.">Clear</button>
   </div>
@@ -396,6 +398,17 @@ async function il2Permission(handle, mode){
 
 const IL2_CFG_KEY = 'graphicsStartupCfg';
 
+async function il2GetKey(key){
+  try{
+    const db = await il2db();
+    return await new Promise((resolve, reject) => {
+      const tx  = db.transaction(IL2_STORE, 'readonly');
+      const req = tx.objectStore(IL2_STORE).get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror   = () => reject(req.error);
+    });
+  }catch(err){ return null; }
+}
 async function il2PutKey(key, handle){
   const db = await il2db();
   return new Promise((resolve, reject) => {
@@ -452,6 +465,7 @@ async function renderFolderBar(){
   bar.style.display = '';
   bar.className = 'folderbar';
   $('#fbAllow').style.display = 'none';
+  $('#fbPickCfg').style.display = 'none';
   $('#fbClear').style.display = 'none';
   $('#fbChoose').style.display = '';
 
@@ -479,6 +493,13 @@ async function renderFolderBar(){
     if(extras) $('#fbClear').style.display = '';
     return;
   }
+
+  // A folder alone cannot always produce startup.cfg: served over http this
+  // browser will not surface .cfg through a directory handle, though the file
+  // picker reaches it perfectly well. So when the file is missing, ask for it
+  // here rather than letting the Graphics Configurator fail on its own later.
+  const haveCfg = !!(await il2GetKey(IL2_CFG_KEY));
+  if(!haveCfg) $('#fbPickCfg').style.display = '';
 
   const perm = await il2Permission(handle);
   $('#fbClear').style.display = '';
@@ -517,15 +538,8 @@ $('#fbChoose').addEventListener('click', async () => {
     return;
   }
   await il2Put(data);
-  const gotCfg = await il2RememberStartupCfg(data);
-  renderFolderBar();
-  if(!gotCfg){
-    // Not fatal — the Graphics Configurator can still be pointed at the file
-    // by hand — but worth saying, since every other tool will now just work.
-    const sub = $('#fbSub');
-    sub.innerHTML += ' <b style="color:var(--amber)">No startup.cfg was found in it, ' +
-      'so the Graphics Configurator will ask for that file once.</b>';
-  }
+  await il2RememberStartupCfg(data);   // works on some origins, not on others
+  await renderFolderBar();
 });
 
 $('#fbAllow').addEventListener('click', async () => {
@@ -535,6 +549,19 @@ $('#fbAllow').addEventListener('click', async () => {
   // Reconnecting is another fresh gesture, so take the chance to pick up
   // startup.cfg if it was never resolved — or if the folder has changed.
   await il2RememberStartupCfg(handle);
+  renderFolderBar();
+});
+
+$('#fbPickCfg').addEventListener('click', async () => {
+  const dir = await il2Get();
+  let picked;
+  try{
+    [picked] = await window.showOpenFilePicker({
+      types:[{ description:'IL-2 startup.cfg', accept:{ 'text/plain':['.cfg'] } }],
+      startIn: dir || undefined,      // opens straight in the game folder
+    });
+  }catch(err){ if(!(err && err.name === 'AbortError')) console.error(err); return; }
+  await il2PutKey(IL2_CFG_KEY, picked);
   renderFolderBar();
 });
 
