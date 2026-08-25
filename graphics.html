@@ -1641,15 +1641,34 @@ async function il2Connect(container, onReady){
     return out;
   };
 
+  // Two ways to reach a file that sits directly in this folder, both cheap.
+  // Whichever answers first wins; what each one reports when it fails is kept,
+  // because "not found" and "the browser refused" want different responses and
+  // have been mistaken for each other more than once here.
+  const attempts = [];
+  const inFolder = async (dir) => {
+    try{
+      const h = await dir.getFileHandle('startup.cfg');
+      if(h) return h;
+    }catch(err){ attempts.push('getFileHandle: ' + (err && err.name ? err.name : err)); }
+
+    try{
+      const files = await filesIn(dir);
+      if(files.has('startup.cfg')) return files.get('startup.cfg');
+      attempts.push('listing ' + dir.name + ': ' + files.size + ' files, no startup.cfg');
+    }catch(err){ attempts.push('listing: ' + (err && err.name ? err.name : err)); }
+
+    return null;
+  };
+
   const findStartup = async (dir) => {
-    let files = await filesIn(dir);
-    if(files.has('startup.cfg')) return files.get('startup.cfg');
+    let found = await inFolder(dir);
+    if(found) return found;
 
     // The install root may have been chosen rather than data itself.
     try{
-      const data = await dir.getDirectoryHandle('data');
-      files = await filesIn(data);
-      if(files.has('startup.cfg')) return files.get('startup.cfg');
+      found = await inFolder(await dir.getDirectoryHandle('data'));
+      if(found) return found;
     }catch(err){ /* no data folder inside this one */ }
 
     return null;
@@ -1681,8 +1700,8 @@ async function il2Connect(container, onReady){
       say('Searched <code>' + dirHandle.name + '</code> and found no <code>startup.cfg</code>. ' +
           'It holds ' + files + ' files and ' + folders + ' folders' +
           (names.length ? ', starting with ' + names.map(n => '<code>' + n + '</code>').join(', ') : '') +
-          '. If that is not your IL-2 <code>data</code> folder, pick the file directly and ' +
-          'it will be remembered from now on.', fix);
+          '. ' + (attempts.length ? 'Tried — ' + attempts.join('; ') + '. ' : '') +
+          'Pick the file directly and it will be remembered from now on.', fix);
       return;
     }catch(err){
       console.error('Searching the IL-2 folder failed:', err);
